@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+
+# never commit game data
+*.z64
+*.n64
+*.v64
+tests/courtside.z64

@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "courtside-roster-editor"
+version = "1.0.0"
+description = "Roster editor for Kobe Bryant's NBA Courtside (Nintendo 64)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+keywords = ["nintendo64", "n64", "rom", "roster editor", "nba courtside", "romhacking"]
+classifiers = [
+  "Environment :: Console",
+  "Environment :: Web Environment",
+  "Intended Audience :: End Users/Desktop",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Games/Entertainment",
+  "Topic :: Utilities",
+]
+dependencies = []
+
+[project.scripts]
+courtside = "courtside.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/richvam/kobe-bryant-s-courtside-roster-editior"
+
+[tool.setuptools]
+packages = ["courtside"]
+
+[tool.setuptools.package-data]
+courtside = ["web/*"]
