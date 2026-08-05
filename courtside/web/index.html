@@ -138,6 +138,24 @@
       <button class="primary" data-app="copy">Copy likeness to this player</button>
       <button class="ghost" data-app="swap">Swap likenesses</button>
     </div>
+
+    <h3 class="section">Your own photo</h3>
+    <p class="hint">Any picture can go on a roster card. It is cropped to 64&times;56 and
+      mapped onto the closest of the game's ten palettes, so expect a 1998 look.
+      PNG and BMP work out of the box; other formats need Pillow on the machine
+      running the editor.</p>
+    <div class="row">
+      <button class="primary" data-photo="import">Import a picture&hellip;</button>
+      <button class="ghost" data-photo="save">Save this photo</button>
+      <label class="inline">Fit
+        <select class="f-fit">
+          <option value="crop">crop</option>
+          <option value="stretch">stretch</option>
+        </select>
+      </label>
+      <label class="inline"><input type="checkbox" class="c-dither"> Dither</label>
+    </div>
+
     <div class="grid model-grid"></div>
   </div>
 
@@ -189,6 +207,7 @@
 </div>
 
 <input id="file-input" type="file" accept="application/json" class="hidden">
+<input id="photo-input" type="file" accept="image/*" class="hidden">
 <script src="/app.js"></script>
 </body>
 </html>

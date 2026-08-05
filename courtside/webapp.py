@@ -11,7 +11,7 @@ import os
 import threading
 import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from . import roster
 from .editor import EditorError, RosterEditor
@@ -141,8 +141,40 @@ class EditorService:
             "warnings": report.warnings,
         }
 
-    def photo_png(self, player_id: int) -> bytes | None:
-        return self.editor.appearance.photo_png(int(player_id), scale=3)
+    def photo_png(self, player_id: int, scale: int = 3) -> bytes | None:
+        return self.editor.appearance.photo_png(int(player_id), scale=scale)
+
+    def import_photo(self, player_id: int, body: dict) -> dict:
+        """Take a base64 picture from the browser and put it on a card."""
+        import base64
+        import binascii
+        import os
+        import tempfile
+
+        blob = str(body.get("data") or "")
+        if "," in blob:                      # strip a data: URL prefix
+            blob = blob.split(",", 1)[1]
+        try:
+            raw = base64.b64decode(blob, validate=True)
+        except (binascii.Error, ValueError):
+            raise ApiError("could not read the uploaded picture")
+        if not raw:
+            raise ApiError("the uploaded picture was empty")
+        suffix = os.path.splitext(str(body.get("name") or ""))[1] or ".png"
+        handle, path = tempfile.mkstemp(suffix=suffix)
+        try:
+            with os.fdopen(handle, "wb") as fh:
+                fh.write(raw)
+            p, bank = self.editor.import_photo(
+                str(player_id), path, mode=str(body.get("fit") or "crop"),
+                dither=bool(body.get("dither")))
+        finally:
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+        return {"message": "%s now uses %s (palette bank %d)"
+                          % (p.full_name, body.get("name") or "your picture", bank)}
 
 
 def _read_web(name: str) -> bytes:
@@ -196,8 +228,10 @@ def make_handler(service: EditorService):
                         return self._json(service.editor.export_dict())
                 if path.startswith("/api/photo/"):
                     pid = path.rsplit("/", 1)[-1].split(".")[0]
+                    query = parse_qs(urlparse(self.path).query)
+                    scale = int((query.get("scale") or ["3"])[0])
                     with service.lock:
-                        png = service.photo_png(int(pid))
+                        png = service.photo_png(int(pid), scale=max(1, min(12, scale)))
                     if png is None:
                         return self._json({"error": "no photo"}, 404)
                     return self._send(200, png, "image/png")
@@ -219,6 +253,11 @@ def make_handler(service: EditorService):
                         pid = int(path.rsplit("/", 1)[-1])
                         return self._json({"player": service.patch_player(pid, body),
                                            "state": service.state()})
+                    if path.startswith("/api/photo/"):
+                        pid = int(path.rsplit("/", 1)[-1])
+                        result = service.import_photo(pid, body)
+                        result["state"] = service.state()
+                        return self._json(result)
                     if path == "/api/action":
                         result = service.action(body)
                         result["state"] = service.state()

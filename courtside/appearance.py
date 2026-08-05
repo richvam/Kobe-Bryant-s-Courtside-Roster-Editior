@@ -176,6 +176,44 @@ class AppearanceDatabase:
             return None
         return _png(PHOTO_WIDTH, PHOTO_HEIGHT, rgb, scale)
 
+    # -- importing ------------------------------------------------------
+    def set_photo(self, player_id: int, bank: int, indices: bytes) -> None:
+        """Replace a roster photo with 64x56 indices into ``SPAL`` bank."""
+        from . import lzss
+
+        if len(indices) != PHOTO_PIXELS:
+            raise AppearanceError("expected %d pixels, got %d"
+                                  % (PHOTO_PIXELS, len(indices)))
+        if not 0 <= bank < len(self.palettes) // 512:
+            raise AppearanceError("palette bank %d does not exist" % bank)
+        payload = bytes([bank]) + indices
+        # Keep whatever flavour byte the original blob carried.
+        magic = (ASSET_MAGIC << 8) | 0x80
+        try:
+            existing = self.photos.entry(player_id)
+            if len(existing) >= 4:
+                magic = struct.unpack_from(">I", existing, 0)[0]
+        except AppearanceError:
+            pass
+        blob = (struct.pack(">I", magic) + b"RAW\0"
+                + struct.pack(">I", len(payload)) + lzss.compress(payload))
+        blobs = self.photos.blobs()
+        blobs[player_id] = blob
+        self.photos.rebuild(blobs)
+        self._photo_cache.pop(player_id, None)
+
+    def import_photo(self, player_id: int, path: str, mode: str = "crop",
+                     dither: bool = False) -> int:
+        """Put an image file on a player's roster card. Returns the bank used."""
+        from . import images
+
+        picture = images.load_image(path)
+        rgb = images.fit(picture, PHOTO_WIDTH, PHOTO_HEIGHT, mode=mode)
+        banks = [self.palette_rgb(i) for i in range(len(self.palettes) // 512)]
+        bank = images.choose_palette(rgb, banks)
+        self.set_photo(player_id, bank, images.quantise(rgb, banks[bank], dither))
+        return bank
+
     # -- serialisation --------------------------------------------------
     def to_file(self) -> bytes:
         self.chunkfile.set(b"PTEX", self.faces.data)

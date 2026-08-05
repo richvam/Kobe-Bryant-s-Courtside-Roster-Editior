@@ -135,6 +135,43 @@ class RosterEditor:
         self._appearance_dirty = True
         return pa, pb
 
+    # -- photographs -----------------------------------------------------
+    def import_photo(self, player: str, path: str, mode: str = "crop",
+                     dither: bool = False) -> tuple[roster.Player, int]:
+        """Replace a player's roster photo with an image from disk."""
+        p = self.one(player)
+        bank = self.appearance.import_photo(p.player_id, path, mode=mode, dither=dither)
+        self._appearance_dirty = True
+        return p, bank
+
+    def export_photo(self, player: str, path: str, scale: int = 4) -> roster.Player:
+        p = self.one(player)
+        png = self.appearance.photo_png(p.player_id, scale=scale)
+        if png is None:
+            raise EditorError("%s has no roster photo" % p.full_name)
+        with open(path, "wb") as fh:
+            fh.write(png)
+        return p
+
+    def export_all_photos(self, directory: str, scale: int = 4,
+                          players: list[roster.Player] | None = None) -> list[str]:
+        """Write every roster photo into ``directory`` as a PNG."""
+        import os
+        import re
+
+        os.makedirs(directory, exist_ok=True)
+        written: list[str] = []
+        for p in (players if players is not None else self.db.players):
+            png = self.appearance.photo_png(p.player_id, scale=scale)
+            if png is None:
+                continue
+            safe = re.sub(r"[^A-Za-z0-9._-]+", "-", p.full_name).strip("-") or "player"
+            path = os.path.join(directory, "%03d-%s.png" % (p.player_id, safe))
+            with open(path, "wb") as fh:
+                fh.write(png)
+            written.append(path)
+        return written
+
     # -- import / export -------------------------------------------------
     def export_dict(self) -> dict:
         return {

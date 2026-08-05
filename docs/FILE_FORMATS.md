@@ -258,6 +258,11 @@ to be duplicated.
 * **`SPAL`** — ten 256-colour palettes in RGBA5551 (`rrrrrggg gggbbbbb a`),
   512 bytes each. Each photo names its bank in that first decoded byte.
 
+Writing a photo back means reversing that: quantise a picture to one of the ten
+banks, prefix the bank index, LZSS-pack it and rebuild the blob with the same
+`0x735764xx` header the original carried. `courtside/images.py` does the
+decoding and quantising; `AppearanceDatabase.set_photo` does the packing.
+
 Both tables are indexed by player id, which is what makes "give this player
 that player's face" a table edit rather than an art job.
 

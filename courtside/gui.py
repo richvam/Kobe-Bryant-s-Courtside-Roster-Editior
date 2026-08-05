@@ -35,6 +35,11 @@ ROM_FILETYPES = [
     ("All files", "*.*"),
 ]
 JSON_FILETYPES = [("JSON files", "*.json"), ("All files", "*.*")]
+IMAGE_FILETYPES = [
+    ("Pictures", "*.png *.bmp *.jpg *.jpeg *.gif *.PNG *.BMP *.JPG *.JPEG *.GIF"),
+    ("PNG images", "*.png *.PNG"),
+    ("All files", "*.*"),
+]
 
 SORTS = ("Depth chart", "Name", "Overall", "Jersey")
 
@@ -92,6 +97,7 @@ class CourtsideGUI(tk.Tk):
         toolsmenu = tk.Menu(bar, tearoff=0)
         toolsmenu.add_command(label="Check roster consistency", command=self.show_problems)
         toolsmenu.add_command(label="Save this player's photo as PNG…", command=self.save_photo)
+        toolsmenu.add_command(label="Export every roster photo…", command=self.export_all_photos)
         bar.add_cascade(label="Tools", menu=toolsmenu)
 
         helpmenu = tk.Menu(bar, tearoff=0)
@@ -283,21 +289,27 @@ class CourtsideGUI(tk.Tk):
         grid.columnconfigure(1, weight=1)
 
         self.rating_vars: dict[str, tk.IntVar] = {}
+        self.rating_scales: dict[str, ttk.Scale] = {}
         for row, attr in enumerate(roster.ATTRIBUTES):
             ttk.Label(grid, text=attr.label).grid(row=row, column=0, sticky="w",
                                                   padx=(0, 10), pady=2)
             var = tk.IntVar(value=attr.minimum)
             self.rating_vars[attr.key] = var
+            # ttk.Scale is continuous, so snap it to whole numbers as it moves
+            # rather than letting a fractional value reach the record.
             scale = ttk.Scale(grid, from_=attr.minimum, to=attr.maximum,
-                              variable=var, orient="horizontal")
+                              orient="horizontal")
+            scale.configure(command=lambda v, k=attr.key: self._snap_rating(k, v))
             scale.grid(row=row, column=1, sticky="ew", pady=2)
+            self.rating_scales[attr.key] = scale
             spin = ttk.Spinbox(grid, from_=attr.minimum, to=attr.maximum, width=5,
-                               textvariable=var)
+                               increment=1, textvariable=var,
+                               command=lambda k=attr.key: self.commit_rating(k))
             spin.grid(row=row, column=2, sticky="e", padx=(10, 0), pady=2)
-            for widget in (scale, spin):
-                widget.bind("<ButtonRelease-1>",
-                            lambda e, k=attr.key: self.commit_rating(k))
-                widget.bind("<KeyRelease>", lambda e, k=attr.key: self.commit_rating(k))
+            scale.bind("<ButtonRelease-1>", lambda e, k=attr.key: self.commit_rating(k))
+            scale.bind("<KeyRelease>", lambda e, k=attr.key: self.commit_rating(k))
+            spin.bind("<KeyRelease>", lambda e, k=attr.key: self.commit_rating(k))
+            spin.bind("<Return>", lambda e, k=attr.key: self.commit_rating(k))
             spin.bind("<FocusOut>", lambda e, k=attr.key: self.commit_rating(k))
 
         bulk = ttk.Frame(tab)
@@ -353,6 +365,29 @@ class CourtsideGUI(tk.Tk):
                    command=self.copy_likeness).pack(side="left")
         ttk.Button(buttons, text="Swap likenesses",
                    command=self.swap_likeness).pack(side="left", padx=8)
+
+        ttk.Separator(tab, orient="horizontal").pack(fill="x", pady=14)
+
+        ttk.Label(tab, text="Your own photo", style="Heading.TLabel").pack(anchor="w")
+        ttk.Label(tab, style="Sub.TLabel", wraplength=640, text=(
+            "Any picture can go on a roster card. It is cropped to 64x56 and mapped "
+            "onto the closest of the game's ten palettes, so expect a 1998 look. "
+            "PNG and BMP work out of the box; other formats need Pillow.")
+        ).pack(anchor="w", pady=(2, 8))
+
+        photo_row = ttk.Frame(tab)
+        photo_row.pack(anchor="w")
+        ttk.Button(photo_row, text="Import a picture…",
+                   command=self.import_photo).pack(side="left")
+        ttk.Button(photo_row, text="Save this photo…",
+                   command=self.save_photo).pack(side="left", padx=8)
+        ttk.Label(photo_row, text="Fit:").pack(side="left", padx=(16, 4))
+        self.var_fit = tk.StringVar(value="crop")
+        ttk.Combobox(photo_row, textvariable=self.var_fit, state="readonly", width=9,
+                     values=("crop", "stretch")).pack(side="left")
+        self.var_dither = tk.BooleanVar(value=False)
+        ttk.Checkbutton(photo_row, text="Dither", variable=self.var_dither).pack(
+            side="left", padx=(12, 0))
 
         ttk.Separator(tab, orient="horizontal").pack(fill="x", pady=14)
         self.model_vars = self._byte_grid(
@@ -572,7 +607,9 @@ class CourtsideGUI(tk.Tk):
             self.var_range.set("%d feet" % p.range_feet)
 
             for key, var in self.rating_vars.items():
-                var.set(p.attribute(key))
+                value = p.attribute(key)
+                var.set(value)
+                self.rating_scales[key].set(value)
             for key, var in list(self.model_vars.items()) + list(self.misc_vars.items()):
                 var.set(str(p.misc(key)))
 
@@ -727,6 +764,21 @@ class CourtsideGUI(tk.Tk):
             return
         self._after_edit("Lineup role updated")
 
+    def _snap_rating(self, key: str, raw: str) -> None:
+        """Force a dragged slider onto an integer, and keep the box in step."""
+        try:
+            # not round(): its banker's rounding sends 10.5 down to 10
+            value = int(float(raw) + 0.5)
+        except (TypeError, ValueError):
+            return
+        scale = self.rating_scales[key]
+        if abs(float(scale.get()) - value) > 1e-9:
+            scale.set(value)          # re-entrant, but the guard stops a loop
+        if self.rating_vars[key].get() != value:
+            self.rating_vars[key].set(value)
+        if not self._loading and self.current is not None:
+            self.commit_rating(key)
+
     def commit_rating(self, key: str) -> None:
         if self._loading or self.current is None:
             return
@@ -854,6 +906,50 @@ class CourtsideGUI(tk.Tk):
             self.notebook.select(3)
             self.status("%d roster issue(s)" % len(problems) if problems
                         else "Roster is consistent")
+
+    def import_photo(self) -> None:
+        if self.current is None:
+            return
+        path = filedialog.askopenfilename(title="Choose a picture",
+                                          filetypes=IMAGE_FILETYPES, parent=self)
+        if not path:
+            return
+        self.config(cursor="watch")
+        self.update_idletasks()
+        try:
+            _, bank = self.editor.import_photo(
+                str(self.current.player_id), path,
+                mode=self.var_fit.get(), dither=self.var_dither.get())
+        except (EditorError, ValueError, OSError) as exc:
+            self.report(exc)
+            return
+        finally:
+            self.config(cursor="")
+        self._photo_cache.clear()
+        self.load_player()
+        self.on_tab_changed()
+        self.status("%s now uses %s (palette bank %d)"
+                    % (self.current.full_name, os.path.basename(path), bank))
+
+    def export_all_photos(self) -> None:
+        if not self.editor:
+            return
+        directory = filedialog.askdirectory(
+            title="Choose a folder for the photos", parent=self)
+        if not directory:
+            return
+        self.config(cursor="watch")
+        self.update_idletasks()
+        try:
+            written = self.editor.export_all_photos(directory, scale=4)
+        except OSError as exc:
+            self.report(exc)
+            return
+        finally:
+            self.config(cursor="")
+        self.status("Wrote %d photo(s) to %s" % (len(written), directory))
+        messagebox.showinfo("Courtside", "Wrote %d roster photos to\n%s"
+                            % (len(written), directory), parent=self)
 
     def save_photo(self) -> None:
         if self.current is None:

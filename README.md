@@ -41,6 +41,9 @@ Python 3.10 or newer and nothing else.
 - Reassign a likeness: give one player another player's roster photograph, his
   3D face texture, his model bytes, or any combination
 - Swap two players' looks outright
+- **Put your own picture on a roster card** — any PNG or BMP, cropped and
+  mapped onto the game's palettes automatically
+- **Save any roster photo as a PNG**, one at a time or all 384 at once
 - Roster photos are decoded and displayed, so you can see what you are picking
 
 **Whole rosters**
@@ -154,7 +157,13 @@ python3 -m courtside rom.z64 release "Greg Ostertag" -o out.z64
 # likenesses
 python3 -m courtside rom.z64 appearance "Sean Rooks" "Kobe Bryant" -o out.z64
 python3 -m courtside rom.z64 appearance "Shaquille" "Muggsy Bogues" --swap -o out.z64
+
+# photographs, out and in
 python3 -m courtside rom.z64 photo "Tim Duncan" -o duncan.png --scale 6
+python3 -m courtside rom.z64 photo --all -o photos/           # every player
+python3 -m courtside rom.z64 photo --all --team Lakers -o photos/
+python3 -m courtside rom.z64 setphoto "Kobe Bryant" me.png -o out.z64
+python3 -m courtside rom.z64 setphoto "Kobe Bryant" me.png -o out.z64 --fit stretch
 
 # bulk work
 python3 -m courtside rom.z64 export -o roster.json
@@ -200,6 +209,28 @@ The package is layered so the lower pieces are useful on their own —
 `courtside.lzss` (the codec), `courtside.iff` (the container),
 `courtside.rom` (ROM header, CRC and the packed-file table),
 `courtside.roster` and `courtside.appearance` (the data models).
+
+## Photographs
+
+Every player carries a 64x56 roster photograph, stored as 8-bit indices into
+one of ten shared 256-colour palettes. The editor decodes those into ordinary
+PNGs, and goes the other way too.
+
+Importing a picture crops it to the card's proportions (or stretches it, your
+choice), scales it down, picks whichever of the ten palettes reproduces it most
+closely, and maps every pixel onto that palette. The result looks like 1998,
+because that is all the format can hold — a photo whose colours are nothing
+like the ones the game shipped with will drift, and there is no way around
+that short of repainting the palettes.
+
+PNG and BMP are decoded here, in Python, with only `zlib` — including
+interlaced PNGs, 16-bit samples, greyscale and palette images. JPEG and the
+rest need Pillow (`pip install pillow`); without it you get a message telling
+you to save as a PNG first.
+
+Dithering is available but off by default. These palettes came from
+photographs, so portraits usually land on them cleanly, and diffusing the error
+mostly just speckles flat areas like a studio backdrop.
 
 ## How edits get back into the ROM
 

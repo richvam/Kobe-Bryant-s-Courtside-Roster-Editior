@@ -281,6 +281,40 @@ function wireDetail(host, p) {
     doAction(payload);
   }));
 
+  const picker = $("#photo-input");
+  picker.onchange = async (e) => {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    toast("Converting the picture\u2026");
+    try {
+      const data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error("could not read that file"));
+        reader.readAsDataURL(file);
+      });
+      const res = await post(`/api/photo/${p.id}`, {
+        data, name: file.name,
+        fit: $(".f-fit", host).value,
+        dither: $(".c-dither", host).checked,
+      });
+      applyState(res.state);
+      toast(res.message);
+    } catch (err) { toast(err.message, true); }
+  };
+
+  $$("[data-photo]", host).forEach((btn) => btn.addEventListener("click", () => {
+    if (btn.dataset.photo === "save") {
+      const a = document.createElement("a");
+      a.href = `/api/photo/${p.id}.png?scale=6&v=${Date.now()}`;
+      a.download = `${p.first_name}-${p.last_name}.png`.replace(/\s+/g, "-").toLowerCase();
+      a.click();
+      return;
+    }
+    picker.click();
+  }));
+
   $$("[data-move]", host).forEach((btn) => btn.addEventListener("click", () => {
     const kind = btn.dataset.move;
     if (kind === "trade") {

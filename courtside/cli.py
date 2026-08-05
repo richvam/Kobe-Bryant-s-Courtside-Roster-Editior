@@ -212,15 +212,28 @@ def cmd_import(ed: RosterEditor, args) -> int:
 
 
 def cmd_photo(ed: RosterEditor, args) -> int:
-    p = ed.one(args.player)
-    png = ed.appearance.photo_png(p.player_id, scale=args.scale)
-    if png is None:
-        print("%s has no roster photo" % p.full_name, file=sys.stderr)
-        return 1
-    with open(args.output, "wb") as fh:
-        fh.write(png)
+    """Save a player's roster photo, or every player's."""
+    if args.all:
+        players = ed.db.players
+        if args.team:
+            idx = ed.team_index(args.team)
+            players = [p for p in players if p.team == idx]
+        written = ed.export_all_photos(args.output, scale=args.scale, players=players)
+        print("wrote %d photo(s) to %s" % (len(written), args.output))
+        return 0
+    if not args.player:
+        raise EditorError("name a player, or pass --all to export every photo")
+    p = ed.export_photo(args.player, args.output, scale=args.scale)
     print("wrote %s (%s)" % (args.output, p.full_name))
     return 0
+
+
+def cmd_setphoto(ed: RosterEditor, args) -> int:
+    p, bank = ed.import_photo(args.player, args.image, mode=args.fit,
+                              dither=args.dither)
+    print("%s now uses %s (palette bank %d)"
+          % (p.full_name, os.path.basename(args.image), bank))
+    return save_and_report(ed, args.output)
 
 
 def cmd_gui(ed: RosterEditor, args) -> int:
@@ -346,11 +359,25 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("input")
     p.set_defaults(func=cmd_import)
 
-    p = sub.add_parser("photo", help="save a player's roster photo as a PNG")
-    p.add_argument("player")
-    p.add_argument("-o", "--output", required=True)
-    p.add_argument("--scale", type=int, default=4)
+    p = sub.add_parser("photo", help="save roster photos as PNG files")
+    p.add_argument("player", nargs="?", help="omit when using --all")
+    p.add_argument("-o", "--output", required=True,
+                   help="PNG file, or a directory when using --all")
+    p.add_argument("--all", action="store_true",
+                   help="export every photo into the output directory")
+    p.add_argument("--team", help="with --all, limit to one team")
+    p.add_argument("--scale", type=int, default=4, help="pixel zoom (default 4)")
     p.set_defaults(func=cmd_photo)
+
+    p = with_output(sub.add_parser(
+        "setphoto", help="put your own picture on a player's roster card"))
+    p.add_argument("player")
+    p.add_argument("image", help="PNG or BMP; other formats need Pillow installed")
+    p.add_argument("--fit", choices=("crop", "stretch"), default="crop",
+                   help="crop keeps proportions (default), stretch fills the frame")
+    p.add_argument("--dither", action="store_true",
+                   help="diffuse quantisation error; adds speckle on flat colours")
+    p.set_defaults(func=cmd_setphoto)
 
     sub.add_parser("gui", help="open the offline desktop editor (Tkinter)")\
         .set_defaults(func=cmd_gui)

@@ -216,3 +216,8 @@ code { background: var(--panel-2); padding: 1px 5px; border-radius: 4px; font-si
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 
 .tiny { font-size: 11px; opacity: .75; }
+
+.section { font-size: 14px; margin: 20px 0 4px; }
+.inline { display: flex; align-items: center; gap: 6px; color: var(--text); font-size: 13px; }
+.inline select { width: auto; }
+.inline input[type=checkbox] { width: auto; }

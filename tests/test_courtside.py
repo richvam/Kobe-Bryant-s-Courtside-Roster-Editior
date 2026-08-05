@@ -15,10 +15,11 @@ import random
 import sys
 import tempfile
 import unittest
+import zlib
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from courtside import iff, lzss, roster  # noqa: E402
+from courtside import iff, images, lzss, roster  # noqa: E402
 from courtside.editor import RosterEditor  # noqa: E402
 from courtside.rom import calc_crc  # noqa: E402
 
@@ -183,6 +184,162 @@ class TestLauncherFailures(unittest.TestCase):
         module = self.load()
         for hint in ("python3-tk", "python3-tkinter", "python.org", "serve"):
             self.assertIn(hint, module.TK_HELP)
+
+
+class TestImages(unittest.TestCase):
+    """Decoding pictures with nothing but the standard library."""
+
+    def rgb_png(self, width, height, rgb, **kw):
+        from courtside.appearance import _png
+        return _png(width, height, rgb, **kw)
+
+    def test_png_round_trip(self):
+        rgb = bytearray()
+        for y in range(20):
+            for x in range(30):
+                rgb += bytes((x * 8 % 256, y * 12 % 256, (x * y) % 256))
+        png = self.rgb_png(30, 20, bytes(rgb))
+        got = images.decode_png(png)
+        self.assertEqual((got.width, got.height), (30, 20))
+        self.assertEqual(got.rgb, bytes(rgb))
+
+    def test_png_greyscale_and_palette(self):
+        # 8-bit greyscale, written by hand so the decoder is exercised directly
+        raw = b"".join(b"\0" + bytes(range(0, 16)) for _ in range(4))
+        png = _make_png(16, 4, 8, 0, zlib.compress(raw))
+        got = images.decode_png(png)
+        self.assertEqual(got.pixel(3, 0), (3, 3, 3))
+
+        plte = bytes((255, 0, 0, 0, 255, 0, 0, 0, 255))
+        raw = b"".join(b"\0" + bytes([0, 1, 2]) for _ in range(2))
+        png = _make_png(3, 2, 8, 3, zlib.compress(raw), plte=plte)
+        got = images.decode_png(png)
+        self.assertEqual([got.pixel(x, 0) for x in range(3)],
+                         [(255, 0, 0), (0, 255, 0), (0, 0, 255)])
+
+    def test_bmp_round_trip(self):
+        rgb = bytes(range(24)) * 4          # 8x4 pixels
+        bmp = _make_bmp(8, 4, rgb)
+        got = images.decode_bmp(bmp)
+        self.assertEqual((got.width, got.height), (8, 4))
+        self.assertEqual(got.rgb, rgb)
+
+    def test_fit_scales_and_crops(self):
+        src = images.Image(120, 40, bytes([200, 100, 50]) * (120 * 40))
+        for mode in ("crop", "stretch"):
+            out = images.fit(src, 64, 56, mode=mode)
+            self.assertEqual(len(out), 64 * 56 * 3)
+            self.assertEqual(out[:3], bytes([200, 100, 50]))
+
+    def test_quantise_hits_exact_palette_colours(self):
+        palette = [(0, 0, 0)] * 256
+        palette[7] = (10, 20, 30)
+        palette[9] = (200, 210, 220)
+        rgb = (bytes([10, 20, 30]) * (64 * 28)) + (bytes([200, 210, 220]) * (64 * 28))
+        out = images.quantise(rgb, palette, dither=False)
+        self.assertEqual(set(out[:64 * 28]), {7})
+        self.assertEqual(set(out[64 * 28:]), {9})
+
+    def test_choose_palette_prefers_the_closer_bank(self):
+        reds = [(255, 0, 0)] * 256
+        blues = [(0, 0, 255)] * 256
+        rgb = bytes([250, 5, 5]) * (64 * 56)
+        self.assertEqual(images.choose_palette(rgb, [blues, reds]), 1)
+
+    def test_unreadable_format_explains_itself(self):
+        path = os.path.join(tempfile.mkdtemp(), "photo.jpg")
+        with open(path, "wb") as fh:
+            fh.write(b"\xff\xd8\xff\xe0" + b"\0" * 64)   # a JPEG header
+        try:
+            images.load_image(path)
+        except images.ImageError as exc:
+            if importlib.util.find_spec("PIL") is None:
+                self.assertIn("PNG", str(exc))
+                self.assertIn("pillow", str(exc).lower())
+        else:
+            self.assertIsNotNone(importlib.util.find_spec("PIL"))
+
+
+def _make_png(width, height, depth, colour, idat, plte=None):
+    import struct as _s
+
+    def chunk(tag, body):
+        return (_s.pack(">I", len(body)) + tag + body
+                + _s.pack(">I", zlib.crc32(tag + body) & 0xFFFFFFFF))
+
+    out = b"\x89PNG\r\n\x1a\n" + chunk(
+        b"IHDR", _s.pack(">IIBBBBB", width, height, depth, colour, 0, 0, 0))
+    if plte:
+        out += chunk(b"PLTE", plte)
+    return out + chunk(b"IDAT", idat) + chunk(b"IEND", b"")
+
+
+def _make_bmp(width, height, rgb):
+    import struct as _s
+
+    stride = ((width * 3 + 3) // 4) * 4
+    rows = b""
+    for y in range(height - 1, -1, -1):
+        row = b""
+        for x in range(width):
+            i = (y * width + x) * 3
+            row += bytes((rgb[i + 2], rgb[i + 1], rgb[i]))
+        rows += row.ljust(stride, b"\0")
+    return (b"BM" + _s.pack("<IHHI", 54 + len(rows), 0, 0, 54)
+            + _s.pack("<IiiHHIIiiII", 40, width, height, 1, 24, 0,
+                      len(rows), 2835, 2835, 0, 0) + rows)
+
+
+@needs_rom
+class TestPhotoImport(unittest.TestCase):
+    def setUp(self):
+        self.editor = RosterEditor.open(ROM_PATH)
+        self.tmp = tempfile.mkdtemp()
+
+    def test_export_then_reimport_is_lossless(self):
+        kobe = self.editor.one("Kobe Bryant")
+        before = self.editor.appearance.photo_rgb(kobe.player_id)
+        path = os.path.join(self.tmp, "kobe.png")
+        self.editor.export_photo("Kobe Bryant", path, scale=1)
+
+        target = self.editor.one("Sean Rooks")
+        self.editor.import_photo("Sean Rooks", path)
+        after = self.editor.appearance.photo_rgb(target.player_id)
+        self.assertEqual(after, before)
+
+    def test_imported_photo_survives_a_save(self):
+        path = os.path.join(self.tmp, "kobe.png")
+        self.editor.export_photo("Kobe Bryant", path, scale=1)
+        self.editor.import_photo("Zan Tabak", path)
+        expected = self.editor.appearance.photo_rgb(self.editor.one("Zan Tabak").player_id)
+
+        rom = os.path.join(self.tmp, "out.z64")
+        self.editor.save(rom)
+        again = RosterEditor.open(rom)
+        got = again.appearance.photo_rgb(again.one("Zan Tabak").player_id)
+        self.assertEqual(got, expected)
+
+    def test_import_accepts_an_odd_size_and_aspect(self):
+        wide = images.Image(200, 50, bytes([180, 60, 30]) * (200 * 50))
+        from courtside.appearance import _png
+        path = os.path.join(self.tmp, "wide.png")
+        with open(path, "wb") as fh:
+            fh.write(_png(200, 50, wide.rgb))
+        player = self.editor.one("Zan Tabak")
+        for mode in ("crop", "stretch"):
+            bank = self.editor.appearance.import_photo(player.player_id, path, mode=mode)
+            self.assertIn(bank, range(10))
+            self.assertEqual(len(self.editor.appearance.photo_indices(player.player_id)),
+                             64 * 56)
+
+    def test_export_all_writes_one_file_per_photo(self):
+        out = os.path.join(self.tmp, "shots")
+        lakers = [p for p in self.editor.db.players if p.team == 13]
+        written = self.editor.export_all_photos(out, scale=1, players=lakers)
+        self.assertEqual(len(written), len(lakers))
+        for path in written:
+            self.assertTrue(path.endswith(".png"))
+            self.assertGreater(os.path.getsize(path), 100)
 
 
 @needs_rom
