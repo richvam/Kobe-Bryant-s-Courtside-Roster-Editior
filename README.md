@@ -47,6 +47,11 @@ Python 3.10 or newer and nothing else.
 - **Save any roster photo as a PNG**, one at a time or all 384 at once
 - Roster photos are decoded and displayed, so you can see what you are picking
 
+**The PA announcer**
+- Change the name the announcer shouts when a player scores, by borrowing
+  another player's recorded call
+- Swap two players' calls, or silence a player entirely
+
 **Whole rosters**
 - Export everything to JSON, edit it however you like, import it back
 
@@ -167,6 +172,11 @@ python3 -m courtside rom.z64 photo --all --team Lakers -o photos/
 python3 -m courtside rom.z64 setphoto "Kobe Bryant" me.png -o out.z64
 python3 -m courtside rom.z64 setphoto "Kobe Bryant" me.png -o out.z64 --fit stretch
 
+# what the announcer shouts when he scores
+python3 -m courtside rom.z64 announcer "Sean Rooks" "Kobe Bryant" -o out.z64
+python3 -m courtside rom.z64 announcer "Sean Rooks" "Kobe Bryant" --swap -o out.z64
+python3 -m courtside rom.z64 announcer "Sean Rooks" --silence -o out.z64
+
 # bulk work
 python3 -m courtside rom.z64 export -o roster.json
 python3 -m courtside rom.z64 import roster.json -o out.z64
@@ -234,6 +244,23 @@ you to save as a PNG first.
 Dithering is available but off by default. These palettes came from
 photographs, so portraits usually land on them cleanly, and diffusing the error
 mostly just speckles flat areas like a studio backdrop.
+
+## The PA announcer
+
+Every player has two recordings in `TEAMTALK.IFF` — Vic Orlando saying his
+given name and his surname — and the game looks them up by player id. The
+editor can hand one player another player's call, swap two, or silence one.
+
+The hard limit: **only names already on tape can be used.** There are 384 of
+them and no way to make new ones, so renaming a player to Jordan will not make
+the announcer say "Jordan". Pick the closest recorded name instead.
+
+Changing a call usually makes `TEAMTALK.IFF` grow by a few hundred bytes, which
+is more than the spare room in its slot. When that happens the editor relays
+the whole packed-file area — every file keeps its order but moves up against
+its neighbour, and the file table is rewritten to match. The engine finds its
+files through that table, so this is well-defined, but it is a heavier change
+than an in-place patch, and it has not been tried on hardware.
 
 ## How edits get back into the ROM
 

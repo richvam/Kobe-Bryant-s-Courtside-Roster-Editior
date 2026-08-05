@@ -281,5 +281,47 @@ that player's face" a table edit rather than an art job.
 | File | Notes |
 | --- | --- |
 | `*.BIG` / `*.DIR` / `*.GID` | the engine's resource archives (`resman.c`); `BIG` holds the data, `DIR` the index, `GID` a group id |
-| `TEAMTALK.IFF` | `LFPT` audio container, commentary |
 | `CROWDSFX.ALL` | crowd samples, courtesy of the Seattle Supersonics |
+
+---
+
+## 8. `TEAMTALK.IFF` — the PA announcer
+
+The only packed file that is **not** block-compressed. It is a bare `LFPT`
+container: a u32 size, the form id, then ordinary chunks.
+
+```
+u32       size of everything after this field
+char[4]   'LFPT'
+repeat:   char[4] chunk id, u32 size, data padded to an even length
+```
+
+| Chunk | Contents |
+| --- | --- |
+| `TVER` | version, `00 01 00 01` |
+| `PNAM` | 769 spoken player names, in the count/offset-table shape |
+| `TALK` | 390 general commentary clips, same shape |
+
+`PNAM` holds `1 + 2 × 384` entries because each player owns **two** clips. The
+routine at RAM `0x8008AB08` proves the mapping — it reads the player id
+straight out of the record and indexes the table:
+
+```
+8008ab14  lw   $v1, 0x2dec($v1)   ; the PNAM offset table
+8008ab20  lhu  $a2, 8($a2)        ; player id, from record + 0x08
+8008ab34  sll  $v0, $a2, 1        ; id * 2
+8008ab38  addu $v0, $v0, $a3      ;   + which of the pair
+8008ab3c  sll  $v0, $v0, 2
+8008ab40  addu $v0, $v0, $v1
+8008ab44  lw   $a2, ($v0)         ; offsets[i]
+8008ab48  lw   $a3, 4($v0)        ; offsets[i + 1]
+```
+
+The count word sits in front of the offsets, so player *N* owns entries
+`2N - 1` and `2N`. Which of the pair is the given name and which the surname
+is inferred from clip lengths rather than proven — Rick Fox has the shortest
+pair, Shareef Abdur-Rahim one of the longest.
+
+The samples themselves are still opaque: each entry opens with a u32 `4` and a
+u32 decoded length, then compressed audio. Nothing here decodes them, so the
+editor moves whole clips around rather than trying to make new ones.

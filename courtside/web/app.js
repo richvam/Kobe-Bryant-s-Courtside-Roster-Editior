@@ -176,6 +176,7 @@ function renderDetail() {
     .map((key) => miscField(key, p)).join("");
 
   // moves
+  $(".f-call", root).innerHTML = optionList(others, others.length ? others[0].value : "");
   $(".f-trade", root).innerHTML = optionList(others, others.length ? others[0].value : "");
   $(".f-signto", root).innerHTML = optionList(teamOpts, p.team);
   $(".problems", root).innerHTML =
@@ -306,6 +307,19 @@ function wireDetail(host, p) {
       toast(res.message);
     } catch (err) { toast(err.message, true); }
   };
+
+  $$("[data-call]", host).forEach((btn) => btn.addEventListener("click", () => {
+    const kind = btn.dataset.call;
+    if (kind === "silence") {
+      doAction({ action: "silence_announcer", target: String(p.id) });
+      return;
+    }
+    doAction({
+      action: kind === "swap" ? "swap_announcer" : "announcer",
+      target: String(p.id),
+      source: String($(".f-call", host).value),
+    });
+  }));
 
   $$("[data-photo]", host).forEach((btn) => btn.addEventListener("click", () => {
     if (btn.dataset.photo === "save") {

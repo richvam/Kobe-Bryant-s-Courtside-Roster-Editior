@@ -61,6 +61,8 @@ def save_and_report(ed: RosterEditor, out: str) -> int:
     print("  TEAMINFO.IFF %s" % report.teaminfo)
     if report.teamdata:
         print("  TEAMDATA.IFF %s" % report.teamdata)
+    if report.teamtalk:
+        print("  TEAMTALK.IFF %s" % report.teamtalk)
     print("  CRC fixed: 0x%08X 0x%08X" % report.crc)
     for w in report.warnings:
         print("  warning: %s" % w, file=sys.stderr)
@@ -198,6 +200,26 @@ def cmd_appearance(ed: RosterEditor, args) -> int:
             args.target, args.source,
             model_bytes=not args.no_model, face=not args.no_face, photo=not args.no_photo)
         print("%s now looks like %s" % (d.full_name, s.full_name))
+    return save_and_report(ed, args.output)
+
+
+def cmd_announcer(ed: RosterEditor, args) -> int:
+    if args.silence:
+        p = ed.silence_announcer(args.target)
+        print("the announcer will no longer name %s" % p.full_name)
+    elif args.swap:
+        if not args.source:
+            raise EditorError("--swap needs a second player")
+        a, b = ed.swap_announcer(args.target, args.source)
+        print("%s and %s swapped announcer calls" % (a.full_name, b.full_name))
+    else:
+        if not args.source:
+            raise EditorError("name the player whose call should be borrowed, "
+                              "or pass --silence")
+        d, s = ed.reassign_announcer(
+            args.target, args.source,
+            given_name=not args.surname_only, surname=not args.given_name_only)
+        print("the announcer will call %s \"%s\"" % (d.full_name, s.full_name))
     return save_and_report(ed, args.output)
 
 
@@ -357,6 +379,20 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--no-photo", action="store_true", help="leave the roster photo alone")
     p.add_argument("--no-model", action="store_true", help="leave the model bytes alone")
     p.set_defaults(func=cmd_appearance)
+
+    p = with_output(sub.add_parser(
+        "announcer", help="change the name the PA announcer calls a player"))
+    p.add_argument("target", help="the player whose call changes")
+    p.add_argument("source", nargs="?",
+                   help="the player whose recorded name is borrowed")
+    p.add_argument("--swap", action="store_true", help="exchange two calls")
+    p.add_argument("--silence", action="store_true",
+                   help="leave the announcer with nothing to say for this player")
+    p.add_argument("--given-name-only", action="store_true",
+                   help="borrow only the first-name clip")
+    p.add_argument("--surname-only", action="store_true",
+                   help="borrow only the surname clip")
+    p.set_defaults(func=cmd_announcer)
 
     p = sub.add_parser("export", help="dump the roster to JSON")
     p.add_argument("-o", "--output", required=True)

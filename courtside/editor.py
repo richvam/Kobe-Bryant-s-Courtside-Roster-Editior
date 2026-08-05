@@ -5,11 +5,12 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
-from . import appearance, roster
+from . import announcer, appearance, roster
 from .rom import Rom
 
 TEAMINFO = "TEAMINFO.IFF"
 TEAMDATA = "TEAMDATA.IFF"
+TEAMTALK = "TEAMTALK.IFF"
 
 SUPPORTED_CARTS = {"NNBE", "NNBP", "NNBJ"}
 
@@ -23,6 +24,7 @@ class SaveReport:
     path: str
     teaminfo: str
     teamdata: str | None
+    teamtalk: str | None
     crc: tuple[int, int]
     warnings: list[str]
 
@@ -38,6 +40,8 @@ class RosterEditor:
         self.db = roster.load(rom.read(TEAMINFO))
         self._appearance: appearance.AppearanceDatabase | None = None
         self._appearance_dirty = False
+        self._announcer: announcer.AnnouncerDatabase | None = None
+        self._announcer_dirty = False
         self.dirty = False
 
     @classmethod
@@ -46,7 +50,7 @@ class RosterEditor:
 
     @property
     def has_changes(self) -> bool:
-        return self.dirty or self._appearance_dirty
+        return self.dirty or self._appearance_dirty or self._announcer_dirty
 
     # -- lazy appearance database ---------------------------------------
     @property
@@ -56,6 +60,14 @@ class RosterEditor:
                 raise EditorError("this ROM has no %s" % TEAMDATA)
             self._appearance = appearance.load(self.rom.read(TEAMDATA))
         return self._appearance
+
+    @property
+    def announcer(self) -> announcer.AnnouncerDatabase:
+        if self._announcer is None:
+            if TEAMTALK not in self.rom.fs:
+                raise EditorError("this ROM has no %s" % TEAMTALK)
+            self._announcer = announcer.load(self.rom.read(TEAMTALK))
+        return self._announcer
 
     # -- lookups --------------------------------------------------------
     def find(self, needle: str) -> list[roster.Player]:
@@ -134,6 +146,28 @@ class RosterEditor:
         self.dirty = True
         self._appearance_dirty = True
         return pa, pb
+
+    # -- the PA announcer -------------------------------------------------
+    def reassign_announcer(self, dst: str, src: str, given_name: bool = True,
+                           surname: bool = True) -> tuple[roster.Player, roster.Player]:
+        """Make the announcer call ``dst`` by ``src``'s name."""
+        pd, ps = self.one(dst), self.one(src)
+        self.announcer.copy_call(pd.player_id, ps.player_id,
+                                 given_name=given_name, surname=surname)
+        self._announcer_dirty = True
+        return pd, ps
+
+    def swap_announcer(self, a: str, b: str) -> tuple[roster.Player, roster.Player]:
+        pa, pb = self.one(a), self.one(b)
+        self.announcer.swap_call(pa.player_id, pb.player_id)
+        self._announcer_dirty = True
+        return pa, pb
+
+    def silence_announcer(self, player: str) -> roster.Player:
+        p = self.one(player)
+        self.announcer.silence(p.player_id)
+        self._announcer_dirty = True
+        return p
 
     # -- photographs -----------------------------------------------------
     def import_photo(self, player: str, path: str, mode: str = "crop",
@@ -284,6 +318,9 @@ class RosterEditor:
         teamdata = None
         if self._appearance is not None and self._appearance_dirty:
             teamdata = self.rom.write(TEAMDATA, self._appearance.to_file())
+        teamtalk = None
+        if self._announcer is not None and self._announcer_dirty:
+            teamtalk = self.rom.write(TEAMTALK, self._announcer.to_file())
         crc = self.rom.save(path)
         return SaveReport(path=path, teaminfo=teaminfo, teamdata=teamdata,
-                          crc=crc, warnings=warnings)
+                          teamtalk=teamtalk, crc=crc, warnings=warnings)

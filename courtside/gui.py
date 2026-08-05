@@ -377,6 +377,28 @@ class CourtsideGUI(tk.Tk):
 
         ttk.Separator(tab, orient="horizontal").pack(fill="x", pady=14)
 
+        ttk.Label(tab, text="Announcer call", style="Heading.TLabel").pack(anchor="w")
+        ttk.Label(tab, style="Sub.TLabel", wraplength=640, text=(
+            "What the PA announcer shouts when this player scores. Only names the "
+            "game already has on tape can be used - pick the player whose call you "
+            "want to borrow.")).pack(anchor="w", pady=(2, 8))
+        call_row = ttk.Frame(tab)
+        call_row.pack(anchor="w")
+        self.var_call = tk.StringVar()
+        self.cmb_call = ttk.Combobox(call_row, textvariable=self.var_call,
+                                     state="readonly", width=34)
+        self.cmb_call.pack(side="left")
+        ttk.Button(call_row, text="Use this call",
+                   command=self.copy_call).pack(side="left", padx=8)
+        ttk.Button(call_row, text="Swap",
+                   command=self.swap_call).pack(side="left")
+        ttk.Button(call_row, text="Silence",
+                   command=self.silence_call).pack(side="left", padx=8)
+        self.lbl_call = ttk.Label(tab, style="Sub.TLabel", text="")
+        self.lbl_call.pack(anchor="w", pady=(6, 0))
+
+        ttk.Separator(tab, orient="horizontal").pack(fill="x", pady=14)
+
         ttk.Label(tab, text="Your own photo", style="Heading.TLabel").pack(anchor="w")
         ttk.Label(tab, style="Sub.TLabel", wraplength=640, text=(
             "Any picture can go on a roster card. It is cropped to 64x56 and mapped "
@@ -641,16 +663,19 @@ class CourtsideGUI(tk.Tk):
                   for o in others]
         self.cmb_source.config(values=labels)
         self.cmb_trade.config(values=labels)
+        self.cmb_call.config(values=labels)
         if labels:
             if self.var_source.get() not in labels:
                 self.var_source.set(labels[0])
             if self.var_trade.get() not in labels:
                 self.var_trade.set(labels[0])
+            if self.var_call.get() not in labels:
+                self.var_call.set(labels[0])
         self.var_signto.set(db.team_name(self.current.team))
 
     def _selected_other(self, var: tk.StringVar) -> roster.Player | None:
         try:
-            return self._others[self.cmb_source.cget("values").index(var.get())]
+            return self._others[list(self.cmb_source.cget("values")).index(var.get())]
         except (ValueError, AttributeError, IndexError):
             return None
 
@@ -685,6 +710,7 @@ class CourtsideGUI(tk.Tk):
         try:
             self.set_portrait(self.lbl_app_current, self.current.player_id)
             self.refresh_source_photo()
+            self.describe_call()
         finally:
             self.config(cursor="")
 
@@ -841,6 +867,62 @@ class CourtsideGUI(tk.Tk):
         self.status("%s set to %d" % (roster.MISC_BY_KEY[key][1], value))
 
     # ------------------------------------------------------------------ actions
+    def _call_action(self, run, message: str) -> None:
+        if self.current is None:
+            return
+        self.config(cursor="watch")
+        self.update_idletasks()
+        try:
+            run()
+        except (EditorError, ValueError) as exc:
+            self.report(exc)
+            return
+        finally:
+            self.config(cursor="")
+        self.describe_call()
+        self.status(message)
+
+    def copy_call(self) -> None:
+        other = self._selected_other(self.var_call)
+        if other is None or self.current is None:
+            return
+        self._call_action(
+            lambda: self.editor.reassign_announcer(str(self.current.player_id),
+                                                   str(other.player_id)),
+            "The announcer will call %s \u201c%s\u201d"
+            % (self.current.full_name, other.full_name))
+
+    def swap_call(self) -> None:
+        other = self._selected_other(self.var_call)
+        if other is None or self.current is None:
+            return
+        self._call_action(
+            lambda: self.editor.swap_announcer(str(self.current.player_id),
+                                               str(other.player_id)),
+            "%s and %s swapped announcer calls"
+            % (self.current.full_name, other.full_name))
+
+    def silence_call(self) -> None:
+        if self.current is None:
+            return
+        self._call_action(
+            lambda: self.editor.silence_announcer(str(self.current.player_id)),
+            "The announcer will no longer name %s" % self.current.full_name)
+
+    def describe_call(self) -> None:
+        if self.current is None:
+            return
+        try:
+            first, last = self.editor.announcer.clip_lengths(self.current.player_id)
+        except (EditorError, ValueError):
+            self.lbl_call.config(text="")
+            return
+        if not (first or last):
+            self.lbl_call.config(text="Currently: no recording (silent)")
+        else:
+            self.lbl_call.config(
+                text="Currently: two clips on tape, %d and %d bytes" % (first, last))
+
     def copy_likeness(self) -> None:
         other = self._selected_other(self.var_source)
         if other is None or self.current is None:
@@ -1031,6 +1113,8 @@ class CourtsideGUI(tk.Tk):
                   "TEAMINFO.IFF %s" % report.teaminfo]
         if report.teamdata:
             detail.append("TEAMDATA.IFF %s" % report.teamdata)
+        if report.teamtalk:
+            detail.append("TEAMTALK.IFF %s" % report.teamtalk)
         detail.append("CRC fixed: 0x%08X 0x%08X" % report.crc)
         if report.warnings:
             detail += ["", "Warnings:"] + ["• " + w for w in report.warnings]

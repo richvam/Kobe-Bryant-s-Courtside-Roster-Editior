@@ -17,6 +17,7 @@ from __future__ import annotations
 import struct
 
 from . import iff, lzss
+from .offsets import OffsetTable, TableError
 
 FACE_SIZE = 0x840          # bytes per PTEX entry
 PHOTO_WIDTH = 64
@@ -27,51 +28,8 @@ PHOTO_PIXELS = PHOTO_WIDTH * PHOTO_HEIGHT
 ASSET_MAGIC = 0x735764
 
 
-class AppearanceError(ValueError):
-    pass
-
-
-class _Table:
-    """A ``count`` + offset-table + payload chunk."""
-
-    def __init__(self, data: bytes) -> None:
-        self.count = struct.unpack_from(">I", data, 0)[0]
-        self.offsets = list(struct.unpack_from(">%dI" % (self.count + 1), data, 4))
-        self.data = data
-
-    def entry(self, index: int) -> bytes:
-        if not 0 <= index < self.count:
-            raise AppearanceError("entry %d out of range (0-%d)" % (index, self.count - 1))
-        return self.data[self.offsets[index]:self.offsets[index + 1]]
-
-    def blobs(self) -> list[bytes]:
-        return [self.entry(i) for i in range(self.count)]
-
-    def repoint(self, dst: int, src: int) -> None:
-        """Give ``dst`` a copy of ``src``'s blob."""
-        if not (0 <= dst < self.count and 0 <= src < self.count):
-            raise AppearanceError("entry index out of range")
-        blobs = self.blobs()
-        blobs[dst] = blobs[src]
-        self.rebuild(blobs)
-
-    def rebuild(self, blobs: list[bytes]) -> None:
-        # Entries must stay contiguous: the engine derives an entry's extent
-        # from the following offset, so identical blobs are stored twice
-        # rather than shared.
-        header = 4 + 4 * (len(blobs) + 1)
-        body = bytearray()
-        offsets = []
-        for blob in blobs:
-            offsets.append(header + len(body))
-            body += blob
-        offsets.append(header + len(body))
-        out = bytearray(struct.pack(">I", len(blobs)))
-        out += struct.pack(">%dI" % (len(blobs) + 1), *offsets)
-        out += body
-        self.count = len(blobs)
-        self.offsets = offsets
-        self.data = bytes(out)
+class AppearanceError(TableError):
+    """Raised for anything wrong with a face, photo or palette."""
 
 
 def decode_asset(blob: bytes) -> bytes:
@@ -90,8 +48,8 @@ class AppearanceDatabase:
     def __init__(self, container: iff.Container) -> None:
         self.container = container
         self.chunkfile = iff.parse_chunks(container.payload)
-        self.faces = _Table(self.chunkfile.get(b"PTEX"))
-        self.photos = _Table(self.chunkfile.get(b"PIMG"))
+        self.faces = OffsetTable(self.chunkfile.get(b"PTEX"))
+        self.photos = OffsetTable(self.chunkfile.get(b"PIMG"))
         self.palettes = self.chunkfile.get(b"SPAL")
         self._photo_cache: dict[int, bytes | None] = {}
 

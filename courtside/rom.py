@@ -198,16 +198,47 @@ class RomFileSystem:
 
         new_off = self._end_of_data()
         start = self.base + new_off
-        if start + len(blob) > len(self.data):
+        if start + len(blob) <= len(self.data):
+            self.data[start:start + len(blob)] = blob
+            e.offset = new_off
+            e.size = len(blob)
+            self._flush(e)
+            return "relocated to 0x%X (%d bytes)" % (start, len(blob))
+        # Nothing large enough is free at the end, so close the gaps instead:
+        # every file keeps its order but is laid down back to back, and the
+        # table is rewritten to match.
+        return self._compact(name, blob)
+
+    def _compact(self, name: str, blob: bytes) -> str:
+        order = sorted(self.entries, key=lambda e: e.offset)
+        payload = {e.name: (blob if e.name == name else self.read(e.name))
+                   for e in order}          # read everything before overwriting
+
+        cursor = 0
+        for e in order:
+            cursor = _align(cursor + len(payload[e.name]))
+        if self.base + cursor > len(self.data):
             raise RomError(
-                "no room in the ROM for %s (%d bytes); would need to grow past 0x%X"
-                % (name, len(blob), len(self.data))
+                "no room in the ROM: the packed files would need %d bytes past 0x%X"
+                % (self.base + cursor - len(self.data), len(self.data))
             )
-        self.data[start:start + len(blob)] = blob
-        e.offset = new_off
-        e.size = len(blob)
-        self._flush(e)
-        return "relocated to 0x%X (%d bytes)" % (start, len(blob))
+
+        cursor = 0
+        for e in order:
+            data = payload[e.name]
+            start = self.base + cursor
+            self.data[start:start + len(data)] = data
+            e.offset = cursor
+            e.size = len(data)
+            self._flush(e)
+            cursor += len(data)
+            padded = _align(cursor)
+            if padded > cursor:              # keep the cartridge's own filler
+                self.data[self.base + cursor:self.base + padded] = b"\x55" * (padded - cursor)
+            cursor = padded
+        spare = len(self.data) - (self.base + cursor)
+        return ("relaid the packed files to make room (%d bytes, %d spare in the ROM)"
+                % (len(blob), spare))
 
     def _flush(self, e: FileEntry) -> None:
         off = self.table_offset + 4 + e.index * _ENTRY_SIZE

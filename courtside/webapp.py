@@ -124,6 +124,17 @@ class EditorService:
                 face=bool(body.get("face", True)),
                 photo=bool(body.get("photo", True)))
             return {"message": "%s now looks like %s" % (d.full_name, s.full_name)}
+        if kind == "announcer":
+            d, s = ed.reassign_announcer(str(body["target"]), str(body["source"]))
+            return {"message": "The announcer will call %s \u201c%s\u201d"
+                              % (d.full_name, s.full_name)}
+        if kind == "swap_announcer":
+            a, b = ed.swap_announcer(str(body["target"]), str(body["source"]))
+            return {"message": "%s and %s swapped announcer calls"
+                              % (a.full_name, b.full_name)}
+        if kind == "silence_announcer":
+            p = ed.silence_announcer(str(body["target"]))
+            return {"message": "The announcer will no longer name %s" % p.full_name}
         if kind == "swap_appearance":
             a, b = ed.swap_appearance(str(body["target"]), str(body["source"]))
             return {"message": "%s and %s swapped looks" % (a.full_name, b.full_name)}
@@ -137,6 +148,7 @@ class EditorService:
             "path": report.path,
             "teaminfo": report.teaminfo,
             "teamdata": report.teamdata,
+            "teamtalk": report.teamtalk,
             "crc": ["0x%08X" % c for c in report.crc],
             "warnings": report.warnings,
         }
