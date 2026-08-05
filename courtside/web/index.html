@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Courtside Roster Editor</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="ball" aria-hidden="true"></span>
+    <div>
+      <h1>Courtside Roster Editor</h1>
+      <p id="romline">loading&hellip;</p>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <span id="dirty" class="pill hidden">unsaved changes</span>
+    <button id="btn-export" class="ghost">Export JSON</button>
+    <button id="btn-import" class="ghost">Import JSON</button>
+    <button id="btn-save" class="primary">Save ROM&hellip;</button>
+  </div>
+</header>
+
+<div id="toast" class="toast hidden"></div>
+
+<main>
+  <aside class="sidebar">
+    <div class="filters">
+      <input id="search" type="search" placeholder="Search players" autocomplete="off">
+      <select id="team-filter"></select>
+      <select id="sort">
+        <option value="roster">Depth chart</option>
+        <option value="name">Name</option>
+        <option value="overall">Overall</option>
+        <option value="jersey">Jersey</option>
+      </select>
+    </div>
+    <ul id="players" class="player-list"></ul>
+    <div id="listcount" class="listcount"></div>
+  </aside>
+
+  <section id="detail" class="detail">
+    <p class="empty">Pick a player from the list to start editing.</p>
+  </section>
+</main>
+
+<template id="tpl-detail">
+  <div class="card-head">
+    <img class="portrait" alt="" width="192" height="168">
+    <div class="card-title">
+      <div class="namerow">
+        <input class="f-first" aria-label="First name">
+        <input class="f-last" aria-label="Last name">
+      </div>
+      <p class="subtitle"></p>
+    </div>
+    <div class="ovr"><span class="ovr-value"></span><span class="ovr-label">OVR</span></div>
+  </div>
+
+  <nav class="tabs">
+    <button data-tab="profile" class="active">Profile</button>
+    <button data-tab="ratings">Ratings</button>
+    <button data-tab="appearance">Appearance</button>
+    <button data-tab="moves">Roster moves</button>
+    <button data-tab="advanced">Advanced</button>
+  </nav>
+
+  <div class="tab" data-tab="profile">
+    <div class="grid">
+      <label>Team
+        <select class="f-team"></select>
+      </label>
+      <label>Lineup role
+        <select class="f-starter">
+          <option value="0">Bench</option>
+          <option value="1">Starter &mdash; slot 1</option>
+          <option value="2">Starter &mdash; slot 2</option>
+          <option value="3">Starter &mdash; slot 3</option>
+          <option value="4">Starter &mdash; slot 4</option>
+          <option value="5">Starter &mdash; slot 5</option>
+        </select>
+      </label>
+      <label>Jersey number <span class="tiny">(100 = &ldquo;00&rdquo;)</span>
+        <input class="f-jersey" type="number" min="0" max="100">
+      </label>
+      <label>Position
+        <select class="f-position"></select>
+      </label>
+      <label>Height
+        <span class="height-pair">
+          <select class="f-feet"></select>
+          <select class="f-inches"></select>
+        </span>
+      </label>
+      <label>Weight (lb)
+        <input class="f-weight" type="number" min="100" max="355">
+      </label>
+      <label>Shooting range
+        <select class="f-range"></select>
+      </label>
+    </div>
+  </div>
+
+  <div class="tab hidden" data-tab="ratings">
+    <div class="ratings"></div>
+    <div class="bulk">
+      <button class="ghost" data-bulk="-5">All &minus;5</button>
+      <button class="ghost" data-bulk="5">All +5</button>
+      <button class="ghost" data-bulk="max">Max out</button>
+    </div>
+  </div>
+
+  <div class="tab hidden" data-tab="appearance">
+    <p class="hint">Faces and roster photos live in <code>TEAMDATA.IFF</code> and are indexed by
+      player id, so a likeness can be handed to anyone. The model bytes below drive the on-court
+      player model.</p>
+    <div class="swapper">
+      <figure>
+        <img class="portrait-current" alt="" width="192" height="168">
+        <figcaption class="who-current"></figcaption>
+      </figure>
+      <div class="arrow">&larr;</div>
+      <figure>
+        <img class="portrait-source" alt="" width="192" height="168">
+        <figcaption>
+          <select class="f-source"></select>
+        </figcaption>
+      </figure>
+    </div>
+    <div class="checks">
+      <label><input type="checkbox" class="c-photo" checked> Roster photo</label>
+      <label><input type="checkbox" class="c-face" checked> 3D face texture</label>
+      <label><input type="checkbox" class="c-model" checked> Model bytes</label>
+    </div>
+    <div class="bulk">
+      <button class="primary" data-app="copy">Copy likeness to this player</button>
+      <button class="ghost" data-app="swap">Swap likenesses</button>
+    </div>
+    <div class="grid model-grid"></div>
+  </div>
+
+  <div class="tab hidden" data-tab="moves">
+    <div class="move-block">
+      <h3>Trade</h3>
+      <p class="hint">Swaps two players between their teams. Both rosters keep their size and
+        the players inherit each other's lineup slot.</p>
+      <div class="row">
+        <select class="f-trade"></select>
+        <button class="primary" data-move="trade">Trade</button>
+      </div>
+    </div>
+    <div class="move-block">
+      <h3>Sign to a team</h3>
+      <p class="hint">Moves this player without anything coming back, so the roster sizes change.</p>
+      <div class="row">
+        <select class="f-signto"></select>
+        <button class="primary" data-move="sign">Sign</button>
+      </div>
+    </div>
+    <div class="move-block">
+      <h3>Release</h3>
+      <p class="hint">Drops the player into the Free Agents pool.</p>
+      <div class="row">
+        <button class="danger" data-move="release">Release player</button>
+      </div>
+    </div>
+    <div id="problems" class="problems"></div>
+  </div>
+
+  <div class="tab hidden" data-tab="advanced">
+    <p class="hint">Bytes in the player record whose meaning is not fully pinned down. They are
+      editable for experimentation; leave them alone if you are unsure.</p>
+    <div class="grid misc-grid"></div>
+  </div>
+</template>
+
+<div id="modal" class="modal hidden">
+  <div class="modal-box">
+    <h2 id="modal-title"></h2>
+    <p id="modal-text"></p>
+    <input id="modal-input" type="text">
+    <div class="modal-actions">
+      <button id="modal-cancel" class="ghost">Cancel</button>
+      <button id="modal-ok" class="primary">OK</button>
+    </div>
+  </div>
+</div>
+
+<input id="file-input" type="file" accept="application/json" class="hidden">
+<script src="/app.js"></script>
+</body>
+</html>
