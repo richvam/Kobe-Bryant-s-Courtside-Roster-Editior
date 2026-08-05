@@ -25,6 +25,8 @@ from courtside.rom import calc_crc  # noqa: E402
 ROM_PATH = os.environ.get("COURTSIDE_ROM") or os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "courtside.z64")
 HAVE_ROM = os.path.exists(ROM_PATH)
+LAUNCHER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        "courtside_gui.py")
 needs_rom = unittest.skipUnless(HAVE_ROM, "no ROM at %s" % ROM_PATH)
 
 
@@ -131,11 +133,56 @@ class TestGuiModule(unittest.TestCase):
         self.assertTrue(issubclass(gui.CourtsideGUI, tkinter.Tk))
 
     def test_launcher_script_is_runnable(self):
-        launcher = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                                "courtside_gui.py")
-        self.assertTrue(os.path.exists(launcher))
-        with open(launcher, encoding="utf-8") as fh:
-            compile(fh.read(), launcher, "exec")
+        self.assertTrue(os.path.exists(LAUNCHER))
+        with open(LAUNCHER, encoding="utf-8") as fh:
+            compile(fh.read(), LAUNCHER, "exec")
+
+
+class TestLauncherFailures(unittest.TestCase):
+    """A failed launch must stay readable instead of flashing past."""
+
+    def load(self):
+        spec = importlib.util.spec_from_file_location("courtside_launcher", LAUNCHER)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)  # importing must not start the GUI
+        return module
+
+    def test_importing_the_launcher_does_not_launch(self):
+        module = self.load()
+        self.assertTrue(callable(module.run))
+        self.assertTrue(callable(module.fail))
+
+    def test_fail_writes_a_log_and_exits_nonzero(self):
+        module = self.load()
+        module.HERE = tempfile.mkdtemp()
+        prompted = []
+        module._show_dialog = lambda msg: False          # pretend Tk is unavailable
+        module.input = lambda *a: prompted.append(True)  # pretend a console is attached
+        with self.assertRaises(SystemExit) as caught:
+            module.fail("something broke", "traceback here")
+        self.assertEqual(caught.exception.code, 1)
+        self.assertTrue(prompted, "a console launch must wait before closing")
+        log = os.path.join(module.HERE, "courtside-error.log")
+        self.assertTrue(os.path.exists(log))
+        with open(log, encoding="utf-8") as fh:
+            body = fh.read()
+        self.assertIn("something broke", body)
+        self.assertIn("traceback here", body)
+
+    def test_fail_does_not_prompt_when_a_dialog_was_shown(self):
+        module = self.load()
+        module.HERE = tempfile.mkdtemp()
+        prompted = []
+        module._show_dialog = lambda msg: True           # a window carried the message
+        module.input = lambda *a: prompted.append(True)
+        with self.assertRaises(SystemExit):
+            module.fail("something broke")
+        self.assertFalse(prompted)
+
+    def test_missing_tkinter_help_names_the_packages(self):
+        module = self.load()
+        for hint in ("python3-tk", "python3-tkinter", "python.org", "serve"):
+            self.assertIn(hint, module.TK_HELP)
 
 
 @needs_rom

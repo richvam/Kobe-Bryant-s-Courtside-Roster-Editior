@@ -207,11 +207,25 @@ that trades and releases leave the roster tables consistent.
 
 ## Troubleshooting
 
-**"No module named tkinter"** — install the package for your distribution (see
-Requirements above). Everything except the desktop window works without it.
+**A window flashes open and closes again.** Something failed at startup and the
+console closed with the message still in it. The launcher now holds that
+message on screen and writes a copy to `courtside-error.log` next to
+`courtside_gui.py` — open that file to see what happened. You can also run it
+from a terminal, where the output stays put:
 
-**The window will not open over SSH or on a headless box** — use the browser
-version (`serve`) or the command line.
+```sh
+python3 courtside_gui.py
+```
+
+By far the most common cause is Tkinter missing from your Python (see
+Requirements above); the launcher will name the exact package to install.
+
+**"No module named tkinter"** — install the package for your distribution.
+Everything except the desktop window works without it, including the browser
+version and the whole command line.
+
+**The window will not open over SSH or on a headless box** — there is no
+display to draw on. Use the browser version (`serve`) or the command line.
 
 **Saving takes a few seconds** — the game's data is compressed and has to be
 repacked. Reassigning a likeness makes it slower still, because `TEAMDATA.IFF`

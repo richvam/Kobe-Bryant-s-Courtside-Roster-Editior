@@ -10,3 +10,6 @@ dist/
 *.n64
 *.v64
 tests/courtside.z64
+
+# launcher crash reports
+courtside-error.log
