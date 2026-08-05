@@ -20,7 +20,7 @@ import zlib
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from courtside import iff, images, lzss, roster  # noqa: E402
-from courtside.editor import RosterEditor  # noqa: E402
+from courtside.editor import EditorError, RosterEditor  # noqa: E402
 from courtside.rom import calc_crc  # noqa: E402
 
 ROM_PATH = os.environ.get("COURTSIDE_ROM") or os.path.join(
@@ -340,6 +340,89 @@ class TestPhotoImport(unittest.TestCase):
         for path in written:
             self.assertTrue(path.endswith(".png"))
             self.assertGreater(os.path.getsize(path), 100)
+
+
+@needs_rom
+class TestAlignment(unittest.TestCase):
+    """Everything the engine reads has to stay on four-byte boundaries.
+
+    It DMAs each block straight out of the ROM and reads the decoded payload
+    with 32-bit loads, so a rewrite that decodes perfectly here can still stop
+    the game loading.  Every shipped block, chunk and table entry obeys this.
+    """
+
+    def setUp(self):
+        self.editor = RosterEditor.open(ROM_PATH)
+        self.tmp = tempfile.mkdtemp()
+
+    def block_starts(self, blob):
+        import struct as _s
+        size = _s.unpack_from(">I", blob, 4)[0]
+        n = (size + 0x1FFF) // 0x2000
+        return [(t >> 4) - 4 for t in _s.unpack_from(">%dI" % (n + 1), blob, 8)]
+
+    def assert_sound(self, blob, what):
+        self.assertEqual(iff.check(blob), [], what)
+        for start in self.block_starts(blob):
+            self.assertEqual(start % 4, 0, "%s: block at 0x%X" % (what, start))
+
+    def test_shipped_files_pass(self):
+        for name in ("TEAMINFO.IFF", "TEAMDATA.IFF"):
+            self.assert_sound(self.editor.rom.read(name), name)
+
+    def test_renaming_a_player_keeps_blocks_aligned(self):
+        p = self.editor.one("Sean Rooks")
+        p.first_name, p.last_name = "Michael", "Jordan"
+        self.assert_sound(self.editor.db.to_file(), "after a rename")
+
+    def test_copying_a_portrait_keeps_blocks_aligned(self):
+        self.editor.reassign_appearance("Sean Rooks", "Kobe Bryant")
+        self.assert_sound(self.editor.appearance.to_file(), "after copying a portrait")
+
+    def test_importing_a_photo_keeps_everything_aligned(self):
+        from courtside.appearance import _png
+        path = os.path.join(self.tmp, "square.png")
+        with open(path, "wb") as fh:
+            fh.write(_png(90, 90, bytes([12, 200, 80]) * (90 * 90)))
+        self.editor.import_photo("Sean Rooks", path)
+        self.assert_sound(self.editor.appearance.to_file(), "after importing a photo")
+        table = self.editor.appearance.photos
+        for i in range(table.count):
+            self.assertEqual(table.offsets[i] % 4, 0, "photo entry %d" % i)
+            self.assertEqual(len(table.entry(i)) % 4, 0, "photo entry %d" % i)
+
+    def test_announcer_edit_keeps_entries_aligned(self):
+        self.editor.reassign_announcer("Sean Rooks", "Kobe Bryant")
+        table = self.editor.announcer.names
+        for i in range(table.count):
+            self.assertEqual(table.offsets[i] % 4, 0, "name clip %d" % i)
+
+    def test_chunk_sizes_stay_multiples_of_four(self):
+        # a name one byte longer used to shift every later chunk off alignment
+        self.editor.one("Sean Rooks").last_name = "Jordanx"
+        payload = iff.unpack(self.editor.db.to_file()).payload
+        for chunk in iff.parse_chunks(payload).chunks:
+            self.assertEqual(len(chunk.data) % 4, 0, chunk.ident)
+
+    def test_a_verbatim_block_never_outgrows_the_engine_buffer(self):
+        # padding a stored block would overflow the 0x2000 buffer it is DMA'd into
+        blob = self.editor.appearance.to_file()
+        starts = self.block_starts(blob)
+        import struct as _s
+        size = _s.unpack_from(">I", blob, 4)[0]
+        n = (size + 0x1FFF) // 0x2000
+        table = _s.unpack_from(">%dI" % (n + 1), blob, 8)
+        for i in range(n):
+            if (table[i] & 0xF) == 0:
+                self.assertLessEqual(starts[i + 1] - starts[i], 0x2000, "block %d" % i)
+
+    def test_save_refuses_a_container_that_would_not_load(self):
+        editor = RosterEditor.open(ROM_PATH)
+        broken = bytearray(editor.db.to_file())
+        broken[8:12] = (0xDEADBE0).to_bytes(4, "big")   # bend the block table
+        editor.db.to_file = lambda: bytes(broken)
+        with self.assertRaises(EditorError):
+            editor.save(os.path.join(self.tmp, "nope.z64"))
 
 
 @needs_rom

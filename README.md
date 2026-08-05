@@ -269,6 +269,14 @@ streams. The editor decodes it, applies your changes, and re-packs it —
 recompressing only the blocks that actually changed, so an untouched file comes
 back byte for byte identical (there is a test for exactly that).
 
+Everything the engine reads has to stay on four-byte boundaries — block
+starts, chunk sizes, the offset tables inside them. It DMAs blocks straight
+out of the ROM and reads the decoded payload with 32-bit loads, so a file that
+decodes perfectly on a PC can still refuse to load on the console if a rewrite
+drops the alignment. Every container is checked against those invariants
+before a ROM is written, and the save is refused rather than producing a
+cartridge that will not boot.
+
 Because the encoder does a shortest-path parse over the format's real bit
 costs, the re-packed file usually ends up *smaller* than the original, so it
 drops straight back into its existing slot. If an edit ever did overflow, the

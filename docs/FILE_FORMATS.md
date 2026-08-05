@@ -68,6 +68,28 @@ by the loader; the last entry marks the end of the final block, and the file is
 means the block is stored verbatim, otherwise it is LZSS-compressed. Every
 block decodes to exactly `0x2000` bytes except the last.
 
+### 2.1 Alignment — the rule that bites
+
+**Every block start is a multiple of four.** So is every chunk size, every
+entry offset and every entry size, across all 211 blocks, 406 face textures,
+386 photographs and 769 name clips in the shipped cartridge — without a single
+exception. That is not a coincidence of the data:
+
+* the engine DMAs each block straight out of the ROM (`0x8007DBC0` onwards),
+  and the PI wants an aligned cartridge address;
+* it then reads the decoded payload with 32-bit loads — the offset tables, the
+  chunk headers, the player records — and a misaligned load faults the CPU.
+
+A rewrite that decodes perfectly on a PC will still refuse to load on the
+console if it drops this. `iff.check()` enforces it, and the editor runs that
+over every container before it will write a ROM.
+
+One exception matters when padding: a **verbatim** block must be left at its
+natural length. The engine uses the block's extent as the DMA length into a
+`0x2000` buffer, so padding one would run off the end of that buffer. Only
+compressed blocks get padded — harmless, because the decoder stops at its
+end-of-stream token long before it reaches the filler.
+
 ---
 
 ## 3. LZSS codec

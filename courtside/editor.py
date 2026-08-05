@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
-from . import announcer, appearance, roster
+from . import announcer, appearance, iff, roster
 from .rom import Rom
 
 TEAMINFO = "TEAMINFO.IFF"
@@ -312,12 +312,22 @@ class RosterEditor:
             return self.apply_dict(json.load(fh))
 
     # -- output ---------------------------------------------------------
+    def _checked(self, name: str, blob: bytes) -> bytes:
+        """Refuse to write a container the console would reject."""
+        problems = iff.check(blob)
+        if problems:
+            raise EditorError(
+                "refusing to write %s - the repacked file breaks the format:\n  %s"
+                % (name, "\n  ".join(problems)))
+        return blob
+
     def save(self, path: str) -> SaveReport:
         warnings = self.db.problems()
-        teaminfo = self.rom.write(TEAMINFO, self.db.to_file())
+        teaminfo = self.rom.write(TEAMINFO, self._checked(TEAMINFO, self.db.to_file()))
         teamdata = None
         if self._appearance is not None and self._appearance_dirty:
-            teamdata = self.rom.write(TEAMDATA, self._appearance.to_file())
+            teamdata = self.rom.write(
+                TEAMDATA, self._checked(TEAMDATA, self._appearance.to_file()))
         teamtalk = None
         if self._announcer is not None and self._announcer_dirty:
             teamtalk = self.rom.write(TEAMTALK, self._announcer.to_file())

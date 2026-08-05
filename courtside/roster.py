@@ -200,8 +200,7 @@ class StringPool:
     def to_bytes(self) -> bytes:
         out = bytearray(self._buf)
         struct.pack_into(">I", out, 0, self.declared_count + self._added)
-        if len(out) & 1:
-            out += b"\0"
+        out += b"\0" * (-len(out) % 4)   # keep the chunks behind us aligned
         return bytes(out)
 
 
