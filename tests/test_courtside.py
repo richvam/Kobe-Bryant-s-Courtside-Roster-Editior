@@ -383,6 +383,25 @@ class TestRomRoundTrip(unittest.TestCase):
         bogues = self.editor.one("Bogues")
         self.assertEqual(bogues.height_text, "5'3\"")
 
+    def test_years_pro_matches_real_careers(self):
+        # seasons completed before 1997-98, taken from each player's draft year
+        expected = {
+            "Tim Duncan": 0, "Keith Van Horn": 0, "Brevin Knight": 0,
+            "Kobe Bryant": 1, "Allen Iverson": 1, "Ray Allen": 1,
+            "Kevin Garnett": 2, "Grant Hill": 3, "Anfernee Hardaway": 4,
+            "Shaquille O'Neal": 5, "Dikembe Mutombo": 6, "Gary Payton": 7,
+            "Reggie Miller": 10, "Dennis Rodman": 11, "Karl Malone": 12,
+            "John Stockton": 13, "Hakeem Olajuwon": 13, "Buck Williams": 16,
+        }
+        for name, want in expected.items():
+            self.assertEqual(self.editor.one(name).years_pro, want, name)
+
+    def test_rookies_and_veterans_look_sane(self):
+        years = [p.years_pro for p in self.editor.db.real_players()]
+        self.assertEqual(min(years), 0)
+        self.assertLessEqual(max(years), roster.YEARS_PRO_MAX)
+        self.assertGreater(years.count(0), 20)   # a full rookie class
+
     def test_heights_are_valid_feet_inches(self):
         for p in self.editor.db.players:
             self.assertLessEqual(p.height_remainder, 11, p.full_name)
@@ -458,6 +477,25 @@ class TestEditing(unittest.TestCase):
         db.set_starter_slot(bench, 1)
         slots = sorted(s.starter for s in db.roster(13) if s.starter)
         self.assertEqual(slots, [1, 2, 3, 4, 5])
+
+    def test_years_pro_survives_a_save(self):
+        p = self.editor.one("Tim Duncan")
+        self.assertEqual(p.years_pro, 0)
+        p.years_pro = 12
+        path = self.out()
+        self.editor.save(path)
+        again = RosterEditor.open(path)
+        self.assertEqual(again.one("Tim Duncan").years_pro, 12)
+        self.assertEqual(again.one("Tim Duncan").years_pro_text, "12 years")
+
+    def test_reassigning_a_likeness_leaves_experience_alone(self):
+        # 0x10 sits among the model bytes but is a career figure, not a look
+        rookie = self.editor.one("Tim Duncan")
+        veteran = self.editor.one("Karl Malone")
+        before = rookie.years_pro
+        self.editor.reassign_appearance("Tim Duncan", "Karl Malone")
+        self.assertEqual(rookie.years_pro, before)
+        self.assertNotEqual(rookie.years_pro, veteran.years_pro)
 
     def test_appearance_reassignment_persists(self):
         dst, src = self.editor.reassign_appearance("Shaquille", "Kobe Bryant")

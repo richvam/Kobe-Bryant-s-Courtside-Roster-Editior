@@ -44,6 +44,7 @@ def print_card(ed: RosterEditor, p: roster.Player) -> None:
     print("  id %-6d team %-18s %s" % (
         p.player_id, ed.db.team_name(p.team),
         "starter %d" % slot if slot else "bench"))
+    print("  experience: %s" % p.years_pro_text)
     print("  %s, %d lb   shooting range %d ft" % (p.height_text, p.weight_lbs, p.range_feet))
     print("  ratings:")
     for a in roster.ATTRIBUTES:
@@ -115,7 +116,8 @@ def cmd_list(ed: RosterEditor, args) -> int:
     key = {"name": lambda p: p.last_name.lower(),
            "overall": lambda p: -p.overall,
            "team": lambda p: (p.team, p.last_name.lower()),
-           "id": lambda p: p.player_id}[args.sort]
+           "id": lambda p: p.player_id,
+           "years": lambda p: -p.years_pro}[args.sort]
     for p in sorted(players, key=key):
         print(player_line(ed, p))
     print("%d player(s)" % len(players))
@@ -143,6 +145,8 @@ def cmd_set(ed: RosterEditor, args) -> int:
         p.jersey = args.jersey
     if args.position:
         p.position = args.position
+    if args.years_pro is not None:
+        p.years_pro = args.years_pro
     if args.height:
         p.height_inches = parse_height(args.height)
     if args.weight is not None:
@@ -301,7 +305,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--search", help="substring of the player's name")
     p.add_argument("--position", help="exact position code, e.g. SG")
     p.add_argument("--all", action="store_true", help="include the bonus/dev roster slots")
-    p.add_argument("--sort", choices=("name", "overall", "team", "id"), default="name")
+    p.add_argument("--sort", choices=("name", "overall", "team", "id", "years"),
+                   default="name")
     p.set_defaults(func=cmd_list)
 
     p = sub.add_parser("show", help="print a full player card")
@@ -315,6 +320,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--last-name")
     p.add_argument("--jersey", type=int)
     p.add_argument("--position", help="one of %s" % ", ".join(roster.POSITION_CODES))
+    p.add_argument("--years-pro", type=int, metavar="N",
+                   help="seasons completed before this one; 0 is a rookie")
     p.add_argument("--height", help="e.g. 6'6\" or 78")
     p.add_argument("--weight", type=int, help="pounds")
     p.add_argument("--range", type=int, choices=range(5),

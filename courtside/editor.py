@@ -203,6 +203,8 @@ class RosterEditor:
             "jersey": p.jersey,
             "jersey_text": p.jersey_text,
             "position": p.position,
+            "years_pro": p.years_pro,
+            "years_pro_text": p.years_pro_text,
             "height_inches": p.height_inches,
             "height_text": p.height_text,
             "weight_lbs": p.weight_lbs,
@@ -251,6 +253,8 @@ class RosterEditor:
             p.jersey = int(entry["jersey"])
         if entry.get("position"):
             p.position = entry["position"]
+        if "years_pro" in entry:
+            p.years_pro = int(entry["years_pro"])
         if "height_inches" in entry:
             p.height_inches = int(entry["height_inches"])
         if "weight_lbs" in entry:

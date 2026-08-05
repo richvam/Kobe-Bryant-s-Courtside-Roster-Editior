@@ -132,7 +132,8 @@ function renderDetail() {
   $(".f-last", root).value = p.last_name;
   $(".subtitle", root).textContent =
     `#${p.jersey_text} · ${p.position} · ${p.height_text} · ${p.weight_lbs} lb · ` +
-    `${p.team_name}${p.starter ? ` · starter ${p.starter}` : ""} · id ${p.id}`;
+    `${p.years_pro_text} · ${p.team_name}` +
+    `${p.starter ? ` · starter ${p.starter}` : ""} · id ${p.id}`;
   $(".ovr-value", root).textContent = p.overall;
 
   // profile
@@ -149,6 +150,7 @@ function renderDetail() {
   $(".f-inches", root).innerHTML = optionList(
     [...Array(12).keys()].map((i) => ({ value: i, label: `${i} in` })), inch);
   $(".f-weight", root).value = p.weight_lbs;
+  $(".f-years", root).value = p.years_pro;
   $(".f-range", root).innerHTML = optionList(
     STATE.meta.range_feet.map((ft, i) => ({ value: i, label: `${ft} feet` })), p.range);
 
@@ -170,7 +172,7 @@ function renderDetail() {
     .map((o) => ({ value: o.id, label: `${o.last_name}, ${o.first_name} — ${o.team_name}` }));
   $(".f-source", root).innerHTML = optionList(others, others.length ? others[0].value : "");
   $(".portrait-source", root).src = photoUrl($(".f-source", root).value);
-  $(".model-grid", root).innerHTML = ["model_a", "model_b", "flags_a", "flags_b", "misc_14", "misc_15"]
+  $(".model-grid", root).innerHTML = ["model_b", "flags_a", "flags_b", "misc_14", "misc_15"]
     .map((key) => miscField(key, p)).join("");
 
   // moves
@@ -181,7 +183,7 @@ function renderDetail() {
 
   // advanced
   $(".misc-grid", root).innerHTML = STATE.meta.misc
-    .filter((m) => !["model_a", "model_b", "flags_a", "flags_b", "misc_14", "misc_15"].includes(m.key))
+    .filter((m) => !["model_b", "flags_a", "flags_b", "misc_14", "misc_15"].includes(m.key))
     .map((m) => miscField(m.key, p)).join("");
 
   host.innerHTML = "";
@@ -233,6 +235,7 @@ function wireDetail(host, p) {
   bind(".f-jersey", "jersey", Number);
   bind(".f-position", "position");
   bind(".f-weight", "weight_lbs", Number);
+  bind(".f-years", "years_pro", Number);
   bind(".f-range", "range", Number);
   bind(".f-team", "team", Number);
   bind(".f-starter", "starter", Number);

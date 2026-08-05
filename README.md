@@ -23,6 +23,7 @@ Python 3.10 or newer and nothing else.
   starting slots)
 - Jersey number, including the "00" shirt
 - Position — all eleven codes the game supports: `C PF SF F G PG SG FC CF GF FG`
+- Years pro, from rookie up to a 16-season veteran
 - Height in feet and inches, and weight in pounds
 - Shooting range (8, 12, 16, 20 or 25 feet)
 - All fourteen ratings: Shooting, 3 Pointers, Free Throws, Dribbling, Passing,
@@ -142,11 +143,12 @@ python3 -m courtside rom.z64 info
 python3 -m courtside rom.z64 teams --verbose --nba-only
 python3 -m courtside rom.z64 list --team Lakers
 python3 -m courtside rom.z64 list --sort overall | head -20
+python3 -m courtside rom.z64 list --sort years | head -20     # most experienced
 python3 -m courtside rom.z64 show "Reggie Miller"
 
 # edit a player
 python3 -m courtside rom.z64 set "Kobe Bryant" -o out.z64 \
-    --jersey 24 --position SG --height 6'7\" --weight 212 \
+    --jersey 24 --position SG --height 6'7\" --weight 212 --years-pro 5 \
     --attr three_pointers=95 --attr dunking=100 --starter 1
 
 # roster moves
@@ -178,6 +180,7 @@ python3 -m courtside rom.z64 verify
 ```
 Reggie Miller  (#31, SG)
   id 205    team Indiana            starter 2
+  experience: 10 years
   6'7", 185 lb   shooting range 25 ft
   ratings:
     Shooting       100  ####################

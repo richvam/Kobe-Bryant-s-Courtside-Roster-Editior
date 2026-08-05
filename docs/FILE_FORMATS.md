@@ -182,7 +182,8 @@ u32  slots used    (348 real NBA players; the rest are the bonus teams)
 | `0x0D` | u8 | height: feet in the high nibble, inches in the low one (`0x61` = 6'1") |
 | `0x0E` | u8 | weight in pounds − 100 |
 | `0x0F` | u8 | always 0 |
-| `0x10`–`0x15` | u8 × 6 | on-court model / skin bytes |
+| `0x10` | u8 | years pro — seasons completed before this one, 0 for a rookie |
+| `0x11`–`0x15` | u8 × 5 | on-court model / skin bytes |
 | `0x16` | u8 | shooting range, index into 8/12/16/20/25 feet |
 | `0x17` | u8 | Shooting |
 | `0x18` | u8 | 3 Pointers |
@@ -212,6 +213,13 @@ one byte of the record, which pins the mapping. Spot checks agree with what you
 would expect: Shaquille O'Neal has Free Throws 49 and Dunking 100, Reggie
 Miller has 3 Pointers 100, Gary Payton has Stealing 100, Dikembe Mutombo has
 Blocking 100 and Muggsy Bogues has Blocking 5.
+
+`0x10` was pinned down by comparing it against the draft year of 68 players:
+it agrees with every one, from the 1997 rookie class at 0 up to the four
+1980-81 draftees (Rick Mahorn, Danny Schayes, Buck Williams, Herb Williams)
+at 16. The whole roster forms a clean career pyramid — 33 rookies tapering to
+those four. It sits in the middle of the model/skin run, so copying a likeness
+must skip it.
 
 #### Position byte (`0x0C`)
 

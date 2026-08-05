@@ -280,6 +280,15 @@ class CourtsideGUI(tk.Tk):
             values=["%d feet" % ft for ft in roster.RANGE_FEET])
         self.cmb_range.pack(fill="x")
         self.cmb_range.bind("<<ComboboxSelected>>", lambda e: self.commit_range())
+
+        self.var_years = tk.StringVar()
+        self.spn_years = ttk.Spinbox(
+            cell(3, 1, "Years pro (0 = rookie)"), from_=0, to=roster.YEARS_PRO_MAX,
+            increment=1, textvariable=self.var_years,
+            command=lambda: self.commit_years())
+        self.spn_years.pack(fill="x")
+        self.spn_years.bind("<FocusOut>", lambda e: self.commit_years())
+        self.spn_years.bind("<Return>", lambda e: self.commit_years())
         return tab
 
     def _tab_ratings(self) -> ttk.Frame:
@@ -391,7 +400,7 @@ class CourtsideGUI(tk.Tk):
 
         ttk.Separator(tab, orient="horizontal").pack(fill="x", pady=14)
         self.model_vars = self._byte_grid(
-            tab, ["model_a", "model_b", "flags_a", "flags_b", "misc_14", "misc_15"])
+            tab, ["model_b", "flags_a", "flags_b", "misc_14", "misc_15"])
         return tab
 
     def _tab_moves(self) -> ttk.Frame:
@@ -437,7 +446,7 @@ class CourtsideGUI(tk.Tk):
             "editable for experimentation; leave them alone if you are unsure.")
         ).pack(anchor="w", pady=(0, 12))
         keys = [m[0] for m in roster.MISC_FIELDS
-                if m[0] not in ("model_a", "model_b", "flags_a", "flags_b",
+                if m[0] not in ("model_b", "flags_a", "flags_b",
                                 "misc_14", "misc_15")]
         self.misc_vars = self._byte_grid(tab, keys)
         return tab
@@ -589,9 +598,9 @@ class CourtsideGUI(tk.Tk):
         try:
             self.var_first.set(p.first_name)
             self.var_last.set(p.last_name)
-            self.lbl_sub.config(text="#%s · %s · %s · %d lb · %s%s · id %d" % (
+            self.lbl_sub.config(text="#%s · %s · %s · %d lb · %s · %s%s · id %d" % (
                 p.jersey_text, p.position, p.height_text, p.weight_lbs,
-                db.team_name(p.team),
+                p.years_pro_text, db.team_name(p.team),
                 " · starter %d" % db.starter_slot(p) if db.starter_slot(p) else "",
                 p.player_id))
             self.lbl_ovr.config(text=str(p.overall))
@@ -605,6 +614,7 @@ class CourtsideGUI(tk.Tk):
             self.var_inches.set("%d in" % p.height_remainder)
             self.var_weight.set(str(p.weight_lbs))
             self.var_range.set("%d feet" % p.range_feet)
+            self.var_years.set(str(p.years_pro))
 
             for key, var in self.rating_vars.items():
                 value = p.attribute(key)
@@ -730,6 +740,18 @@ class CourtsideGUI(tk.Tk):
             return
         self.current.set_height(feet, inches)
         self._after_edit("Height set to %s" % self.current.height_text)
+
+    def commit_years(self) -> None:
+        if self._loading or self.current is None:
+            return
+        try:
+            value = int(float(self.var_years.get()))
+        except ValueError:
+            return
+        if self.current.years_pro == value:
+            return
+        self.current.years_pro = value
+        self._after_edit("Experience set to %s" % self.current.years_pro_text)
 
     def commit_range(self) -> None:
         if self._loading or self.current is None:

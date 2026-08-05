@@ -66,11 +66,16 @@ ATTRIBUTES_BY_KEY = {a.key: a for a in ATTRIBUTES}
 RANGE_OFFSET = 0x16
 RANGE_FEET = (8, 12, 16, 20, 25)
 
+#: Seasons completed before this one; 0 is a rookie.  Verified against the
+#: draft year of 68 players, from the 1997 rookie class up to the four
+#: 1980-81 draftees who sit at 16.
+YEARS_PRO_OFFSET = 0x10
+YEARS_PRO_MAX = 30
+
 #: Bytes that drive how a player looks and behaves but whose exact meaning is
 #: not pinned down.  They are copied wholesale by "reassign appearance" and are
 #: individually editable for anyone who wants to experiment.
 MISC_FIELDS: tuple[tuple[str, str, int, int, int], ...] = (
-    ("model_a", "Model A", 0x10, 0, 255),
     ("model_b", "Model B", 0x11, 0, 255),
     ("flags_a", "Flags A", 0x12, 0, 255),
     ("flags_b", "Flags B", 0x13, 0, 255),
@@ -84,8 +89,10 @@ MISC_FIELDS: tuple[tuple[str, str, int, int, int], ...] = (
 
 MISC_BY_KEY = {m[0]: m for m in MISC_FIELDS}
 
-#: The six bytes that describe a player's on-court model and skin.
-APPEARANCE_OFFSETS = (0x10, 0x11, 0x12, 0x13, 0x14, 0x15)
+#: The bytes that describe a player's on-court model and skin.  0x10 sits in
+#: the middle of this run but is his years pro, so it is deliberately excluded:
+#: handing someone another player's face must not rewrite his career length.
+APPEARANCE_OFFSETS = (0x11, 0x12, 0x13, 0x14, 0x15)
 
 # ---------------------------------------------------------------------------
 # positions
@@ -275,6 +282,22 @@ class Player:
     @property
     def jersey_text(self) -> str:
         return "00" if self.jersey == JERSEY_DOUBLE_ZERO else str(self.jersey)
+
+    @property
+    def years_pro(self) -> int:
+        """Seasons completed before this one; 0 is a rookie."""
+        return self.raw[YEARS_PRO_OFFSET]
+
+    @years_pro.setter
+    def years_pro(self, value: int) -> None:
+        self.raw[YEARS_PRO_OFFSET] = max(0, min(YEARS_PRO_MAX, int(value)))
+
+    @property
+    def years_pro_text(self) -> str:
+        years = self.years_pro
+        if years == 0:
+            return "rookie"
+        return "%d year%s" % (years, "" if years == 1 else "s")
 
     @property
     def position(self) -> str:
