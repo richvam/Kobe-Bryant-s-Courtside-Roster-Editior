@@ -10,9 +10,10 @@ recovered by disassembling the cartridge. The full write-up is in
 [`docs/FILE_FORMATS.md`](docs/FILE_FORMATS.md) — the container format, the
 LZSS codec, the 72-byte player record, the position packing, all of it.
 
-No third-party dependencies: Python 3.10 or newer and nothing else.
+It runs entirely offline. No third-party packages, no internet, no accounts —
+Python 3.10 or newer and nothing else.
 
-![The editor's profile tab](docs/screenshot-profile.png)
+![The desktop editor](docs/gui-profile.png)
 
 ## What you can edit
 
@@ -47,26 +48,65 @@ No third-party dependencies: Python 3.10 or newer and nothing else.
 
 ## Install and run
 
+There is nothing to install. Download the repository, then double-click
+`courtside_gui.py` — or from a terminal:
+
 ```sh
 git clone https://github.com/richvam/kobe-bryant-s-courtside-roster-editior
 cd kobe-bryant-s-courtside-roster-editior
-python3 -m courtside /path/to/courtside.z64 serve
+
+python3 courtside_gui.py                  # pick a ROM from the file dialog
+python3 courtside_gui.py courtside.z64    # or open one straight away
 ```
 
-That starts a local server and opens the editor in your browser. `.z64`, `.n64`
-and `.v64` dumps are all accepted; the byte order is normalised on load.
+`.z64`, `.n64` and `.v64` dumps are all accepted; the byte order is normalised
+on load. You need to supply your own ROM — none is included here, and none
+will be.
 
-You need to supply your own ROM. None is included here, and none will be.
+### Requirements
 
-## The graphical editor
+Python 3.10 or newer with Tkinter, which drives the window. The python.org
+installers for **Windows and macOS bundle it**, so there is nothing else to do
+there. On Linux it is usually a separate package:
+
+```sh
+sudo apt install python3-tk        # Debian, Ubuntu, Mint
+sudo dnf install python3-tkinter   # Fedora
+sudo pacman -S tk                  # Arch
+```
+
+If Tkinter is missing the launcher tells you exactly this and points you at the
+command line, which works without it.
+
+## The desktop editor
 
 | | |
 | --- | --- |
-| ![Ratings](docs/screenshot-ratings.png) | ![Appearance](docs/screenshot-appearance.png) |
+| ![Ratings](docs/gui-ratings.png) | ![Appearance](docs/gui-appearance.png) |
 
 Pick a player on the left, edit on the right; every change is applied to the
-in-memory ROM immediately. **Save ROM…** asks for a destination path and writes
-a fresh file — your original is never touched.
+in-memory ROM immediately. **File → Save ROM As…** writes a fresh file — your
+original is never touched. Saving repacks the game's compressed data, which
+takes a few seconds and runs in the background so the window stays responsive.
+
+The list can be filtered by team and searched by name, jersey or player id, and
+sorted by depth chart, name, overall or number. **Tools → Check roster
+consistency** reports any team that has drifted from twelve players and a full
+starting five.
+
+### A browser version too
+
+If you would rather work in a browser — or want to edit from another machine on
+your own network — the same editor is available as a local page:
+
+```sh
+python3 -m courtside courtside.z64 serve
+```
+
+That serves `127.0.0.1` from Python's own HTTP server. It is still fully
+offline: no CDNs, no external requests, nothing leaves your machine.
+
+![The browser version](docs/screenshot-appearance.png)
 
 ## The command line
 
@@ -164,6 +204,18 @@ COURTSIDE_ROM=/path/to/rom.z64 python3 tests/test_courtside.py   # everything
 The ROM-backed tests check that both packed files re-pack byte-identically,
 that edits survive a save-and-reload, that a saved ROM's CRC validates, and
 that trades and releases leave the roster tables consistent.
+
+## Troubleshooting
+
+**"No module named tkinter"** — install the package for your distribution (see
+Requirements above). Everything except the desktop window works without it.
+
+**The window will not open over SSH or on a headless box** — use the browser
+version (`serve`) or the command line.
+
+**Saving takes a few seconds** — the game's data is compressed and has to be
+repacked. Reassigning a likeness makes it slower still, because `TEAMDATA.IFF`
+is 1.3 MB of packed art. The window stays responsive while it works.
 
 ## Compatibility
 

@@ -223,6 +223,11 @@ def cmd_photo(ed: RosterEditor, args) -> int:
     return 0
 
 
+def cmd_gui(ed: RosterEditor, args) -> int:
+    from .gui import main as gui_main
+    return gui_main([ed.rom.path or ""])
+
+
 def cmd_serve(ed: RosterEditor, args) -> int:
     from .webapp import serve
     serve(ed, host=args.host, port=args.port, open_browser=not args.no_browser)
@@ -347,7 +352,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--scale", type=int, default=4)
     p.set_defaults(func=cmd_photo)
 
-    p = sub.add_parser("serve", help="open the graphical editor in a browser")
+    sub.add_parser("gui", help="open the offline desktop editor (Tkinter)")\
+        .set_defaults(func=cmd_gui)
+
+    p = sub.add_parser("serve", help="open the editor as a local web page")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8756)
     p.add_argument("--no-browser", action="store_true")

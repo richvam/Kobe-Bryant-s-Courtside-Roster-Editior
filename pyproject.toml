@@ -24,6 +24,9 @@ dependencies = []
 [project.scripts]
 courtside = "courtside.cli:main"
 
+[project.gui-scripts]
+courtside-gui = "courtside.gui:main"
+
 [project.urls]
 Homepage = "https://github.com/richvam/kobe-bryant-s-courtside-roster-editior"
 

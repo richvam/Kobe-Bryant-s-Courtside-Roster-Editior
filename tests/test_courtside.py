@@ -117,6 +117,26 @@ class TestStringPool(unittest.TestCase):
         self.assertEqual(pool.get(5), "Smith")
 
 
+class TestGuiModule(unittest.TestCase):
+    """The GUI is only importable where Tkinter is installed."""
+
+    def test_imports_and_exposes_main(self):
+        try:
+            import tkinter  # noqa: F401
+        except ImportError:
+            self.skipTest("Tkinter is not installed in this interpreter")
+        from courtside import gui
+        self.assertTrue(callable(gui.main))
+        self.assertTrue(issubclass(gui.CourtsideGUI, __import__("tkinter").Tk))
+
+    def test_launcher_script_is_runnable(self):
+        launcher = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                "courtside_gui.py")
+        self.assertTrue(os.path.exists(launcher))
+        with open(launcher, encoding="utf-8") as fh:
+            compile(fh.read(), launcher, "exec")
+
+
 @needs_rom
 class TestRomRoundTrip(unittest.TestCase):
     @classmethod
