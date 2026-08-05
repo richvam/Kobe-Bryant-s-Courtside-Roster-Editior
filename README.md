@@ -48,8 +48,31 @@ Python 3.10 or newer and nothing else.
 
 ## Install and run
 
-There is nothing to install. Download the repository, then double-click
-`courtside_gui.py` — or from a terminal:
+There is nothing to install beyond Python itself.
+
+### Windows
+
+1. Install Python from
+   [python.org/downloads/windows](https://www.python.org/downloads/windows/).
+   On the installer's first page tick **Add python.exe to PATH**. This build
+   bundles Tkinter, which draws the editor's window.
+2. Download this repository (green **Code** button → **Download ZIP**) and
+   unzip it.
+3. Double-click **`courtside_gui.bat`**, or drag a ROM onto it.
+
+Use the `.bat`, not the `.py`, on Windows. It finds a working Python by itself,
+which matters because Windows ships a placeholder `python3` command that only
+advertises the Microsoft Store:
+
+> Python was not found; run without arguments to install from the Microsoft
+> Store, or disable this shortcut from Settings…
+
+That message means Python is not installed yet (or is not on your PATH) — it
+does not come from this editor. From a terminal, `py courtside_gui.py` avoids
+the placeholder too; plain `python3` often does not, even when Python is
+installed.
+
+### macOS and Linux
 
 ```sh
 git clone https://github.com/richvam/kobe-bryant-s-courtside-roster-editior
@@ -59,15 +82,8 @@ python3 courtside_gui.py                  # pick a ROM from the file dialog
 python3 courtside_gui.py courtside.z64    # or open one straight away
 ```
 
-`.z64`, `.n64` and `.v64` dumps are all accepted; the byte order is normalised
-on load. You need to supply your own ROM — none is included here, and none
-will be.
-
-### Requirements
-
-Python 3.10 or newer with Tkinter, which drives the window. The python.org
-installers for **Windows and macOS bundle it**, so there is nothing else to do
-there. On Linux it is usually a separate package:
+macOS: use the python.org installer, which bundles Tkinter. Linux: Tkinter is
+usually a separate package —
 
 ```sh
 sudo apt install python3-tk        # Debian, Ubuntu, Mint
@@ -75,8 +91,13 @@ sudo dnf install python3-tkinter   # Fedora
 sudo pacman -S tk                  # Arch
 ```
 
-If Tkinter is missing the launcher tells you exactly this and points you at the
-command line, which works without it.
+If Tkinter is missing the launcher says so and names the package for you.
+
+### Either way
+
+Python 3.10 or newer is required. `.z64`, `.n64` and `.v64` dumps are all
+accepted; the byte order is normalised on load. You need to supply your own
+ROM — none is included here, and none will be.
 
 ## The desktop editor
 
@@ -207,18 +228,17 @@ that trades and releases leave the roster tables consistent.
 
 ## Troubleshooting
 
+**"Python was not found; run without arguments to install from the Microsoft
+Store…"** — that is Windows' placeholder command, not this editor. Install
+Python from python.org (ticking **Add python.exe to PATH**) and launch with
+`courtside_gui.bat`, which sidesteps the placeholder. If Python is already
+installed, try `py courtside_gui.py` instead of `python3`.
+
 **A window flashes open and closes again.** Something failed at startup and the
-console closed with the message still in it. The launcher now holds that
-message on screen and writes a copy to `courtside-error.log` next to
-`courtside_gui.py` — open that file to see what happened. You can also run it
-from a terminal, where the output stays put:
-
-```sh
-python3 courtside_gui.py
-```
-
-By far the most common cause is Tkinter missing from your Python (see
-Requirements above); the launcher will name the exact package to install.
+console closed with the message still in it. The launcher holds that message on
+screen and writes a copy to `courtside-error.log` next to `courtside_gui.py` —
+open that file to see what happened. You can also run it from a terminal, where
+the output stays put.
 
 **"No module named tkinter"** — install the package for your distribution.
 Everything except the desktop window works without it, including the browser

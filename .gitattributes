@@ -1,0 +1,10 @@
+# Batch files must keep CRLF endings or cmd.exe can mis-parse labels.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Everything else is LF, and ROMs/images are binary.
+*.py   text eol=lf
+*.md   text eol=lf
+*.json text eol=lf
+*.png  binary
+*.z64  binary
