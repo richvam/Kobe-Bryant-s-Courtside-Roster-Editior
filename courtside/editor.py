@@ -312,13 +312,17 @@ class RosterEditor:
             return self.apply_dict(json.load(fh))
 
     # -- output ---------------------------------------------------------
+    @staticmethod
+    def _refuse(name: str, problems: list[str]) -> None:
+        raise EditorError(
+            "refusing to write %s - the repacked file breaks the format:\n  %s"
+            % (name, "\n  ".join(problems)))
+
     def _checked(self, name: str, blob: bytes) -> bytes:
         """Refuse to write a container the console would reject."""
         problems = iff.check(blob)
         if problems:
-            raise EditorError(
-                "refusing to write %s - the repacked file breaks the format:\n  %s"
-                % (name, "\n  ".join(problems)))
+            self._refuse(name, problems)
         return blob
 
     def save(self, path: str) -> SaveReport:
@@ -330,7 +334,18 @@ class RosterEditor:
                 TEAMDATA, self._checked(TEAMDATA, self._appearance.to_file()))
         teamtalk = None
         if self._announcer is not None and self._announcer_dirty:
-            teamtalk = self.rom.write(TEAMTALK, self._announcer.to_file())
+            blob = self._announcer.to_file()
+            problems = self._announcer.problems()
+            if problems:
+                self._refuse(TEAMTALK, problems)
+            teamtalk = self.rom.write(TEAMTALK, blob)
+        # Nothing gets written until the whole cartridge still reads the way
+        # the engine's boot scan expects it to.
+        broken = self.rom.verify()
+        if broken:
+            raise EditorError(
+                "refusing to save - the edited ROM would not load:\n  %s"
+                % "\n  ".join(broken))
         crc = self.rom.save(path)
         return SaveReport(path=path, teaminfo=teaminfo, teamdata=teamdata,
                           teamtalk=teamtalk, crc=crc, warnings=warnings)

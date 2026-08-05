@@ -597,7 +597,7 @@ class RosterDatabase:
         self.chunkfile.set(b"ROST", self._build_rost())
         self.chunkfile.set(b"PLYR", plyr_blob)
         payload = iff.build_chunks(self.chunkfile)
-        return iff.pack(payload, magic=self.container.magic, original=self.container)
+        return iff.pack(payload, original=self.container)
 
 
 def load(blob: bytes) -> RosterDatabase:

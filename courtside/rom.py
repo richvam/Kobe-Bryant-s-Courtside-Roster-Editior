@@ -120,7 +120,14 @@ class FileEntry:
         return base + self.offset
 
 
-def _align(value: int, to: int = 8) -> int:
+#: Every file in the shipped cartridge starts on a 16-byte boundary, with the
+#: gaps filled with 0x55.  Relayouts keep that so the DMAs the engine issues out
+#: of these files land exactly where they do on an untouched cart.
+FILE_ALIGN = 0x10
+FILLER = 0x55
+
+
+def _align(value: int, to: int = FILE_ALIGN) -> int:
     return (value + to - 1) & ~(to - 1)
 
 
@@ -145,7 +152,12 @@ class RomFileSystem:
         self.data = data
         self.table_offset = table_offset
         self.count = count
-        self.base = _align(table_offset + 4 + count * _ENTRY_SIZE)
+        # The boot-time scan at RAM 0x8007D378 computes the data base as the
+        # count word plus the table, with no rounding at all, and every file
+        # offset is relative to that.  Aligning it would put every file four
+        # bytes off - harmless while a file is only ever rewritten in place,
+        # fatal the moment one has to be moved.
+        self.base = table_offset + 4 + count * _ENTRY_SIZE
         self.entries: list[FileEntry] = []
         for i in range(count):
             off = table_offset + 4 + i * _ENTRY_SIZE
@@ -175,11 +187,8 @@ class RomFileSystem:
         end = starts[0] if starts else (len(self.data) - self.base)
         return end - entry.offset
 
-    def _end_of_data(self) -> int:
-        return max(_align(e.offset + e.size) for e in self.entries)
-
     def write(self, name: str, blob: bytes) -> str:
-        """Replace a file, relocating it if it no longer fits.
+        """Replace a file, shifting the ones behind it if it no longer fits.
 
         Returns a short description of what happened, for reporting.
         """
@@ -188,61 +197,80 @@ class RomFileSystem:
         if len(blob) <= slack:
             start = e.rom_offset(self.base)
             self.data[start:start + len(blob)] = blob
-            # scrub the tail of the old file so no stale bytes linger
+            # Fill the tail of the old file with the cartridge's own filler so
+            # no stale bytes linger between here and the next file.
             if e.size > len(blob):
-                self.data[start + len(blob):start + e.size] = b"\0" * (e.size - len(blob))
+                self.data[start + len(blob):start + e.size] = bytes(
+                    [FILLER]) * (e.size - len(blob))
             e.size = len(blob)
             self._flush(e)
             return "in place at 0x%X (%d bytes, %d spare)" % (
                 start, len(blob), slack - len(blob))
+        return self._reflow(e, blob)
 
-        new_off = self._end_of_data()
-        start = self.base + new_off
-        if start + len(blob) <= len(self.data):
-            self.data[start:start + len(blob)] = blob
-            e.offset = new_off
-            e.size = len(blob)
-            self._flush(e)
-            return "relocated to 0x%X (%d bytes)" % (start, len(blob))
-        # Nothing large enough is free at the end, so close the gaps instead:
-        # every file keeps its order but is laid down back to back, and the
-        # table is rewritten to match.
-        return self._compact(name, blob)
+    def _reflow(self, target: FileEntry, blob: bytes) -> str:
+        """Grow a file by pushing every file behind it further down the ROM.
 
-    def _compact(self, name: str, blob: bytes) -> str:
+        Files in front keep their exact offsets, so the whole front of the
+        cartridge - including everything the boot checksum covers - is left
+        byte for byte alone.
+        """
         order = sorted(self.entries, key=lambda e: e.offset)
-        payload = {e.name: (blob if e.name == name else self.read(e.name))
-                   for e in order}          # read everything before overwriting
+        first = order.index(target)
+        moving = order[first:]
+        # Read everything that moves before a single byte is overwritten.
+        payload = {e.name: (blob if e is target else self.read(e.name)) for e in moving}
 
-        cursor = 0
-        for e in order:
+        cursor = target.offset
+        for e in moving:
             cursor = _align(cursor + len(payload[e.name]))
         if self.base + cursor > len(self.data):
             raise RomError(
-                "no room in the ROM: the packed files would need %d bytes past 0x%X"
-                % (self.base + cursor - len(self.data), len(self.data))
-            )
+                "no room in the ROM: %s needs %d more bytes than are free past "
+                "0x%X" % (target.name, self.base + cursor - len(self.data),
+                          len(self.data)))
 
-        cursor = 0
-        for e in order:
+        cursor = target.offset
+        moved = 0
+        for e in moving:
             data = payload[e.name]
             start = self.base + cursor
             self.data[start:start + len(data)] = data
+            if e.offset != cursor:
+                moved += 1
             e.offset = cursor
             e.size = len(data)
             self._flush(e)
             cursor += len(data)
             padded = _align(cursor)
             if padded > cursor:              # keep the cartridge's own filler
-                self.data[self.base + cursor:self.base + padded] = b"\x55" * (padded - cursor)
+                self.data[self.base + cursor:self.base + padded] = bytes(
+                    [FILLER]) * (padded - cursor)
             cursor = padded
         spare = len(self.data) - (self.base + cursor)
-        return ("relaid the packed files to make room (%d bytes, %d spare in the ROM)"
-                % (len(blob), spare))
+        return ("grew to %d bytes; %d file%s behind it moved down, %d bytes still "
+                "spare in the ROM" % (len(blob), moved, "" if moved == 1 else "s", spare))
 
     def _flush(self, e: FileEntry) -> None:
         off = self.table_offset + 4 + e.index * _ENTRY_SIZE
         struct.pack_into(">II", self.data, off + 0x14, e.size, e.offset)
+
+    # -- validation -----------------------------------------------------
+    def problems(self) -> list[str]:
+        """Everything about the current layout the engine would trip over."""
+        found: list[str] = []
+        order = sorted(self.entries, key=lambda e: e.offset)
+        if order and order[0].offset != 0:
+            found.append("the first file starts at 0x%X, not at the data base"
+                         % order[0].offset)
+        for a, b in zip(order, order[1:]):
+            if a.offset + a.size > b.offset:
+                found.append("%s (0x%X + %d) overlaps %s at 0x%X"
+                             % (a.name, a.offset, a.size, b.name, b.offset))
+        last = order[-1]
+        if self.base + last.offset + last.size > len(self.data):
+            found.append("%s runs past the end of the ROM" % last.name)
+        return found
 
 
 def find_filesystem(data: bytes | bytearray) -> RomFileSystem:
@@ -269,10 +297,10 @@ def find_filesystem(data: bytes | bytearray) -> RomFileSystem:
             chain.append((rel, size))
         if not ok or names != count:
             continue
-        base = _align(end)
+        base = end
         chain.sort()
         good = all(
-            chain[i][0] + chain[i][1] <= chain[i + 1][0] + 8 for i in range(len(chain) - 1)
+            chain[i][0] + chain[i][1] <= chain[i + 1][0] for i in range(len(chain) - 1)
         ) and base + chain[-1][0] + chain[-1][1] <= len(view)
         if good and chain[0][0] == 0:
             return RomFileSystem(bytearray(data), off, count)
@@ -307,6 +335,39 @@ class Rom:
 
     def write(self, name: str, blob: bytes) -> str:
         return self.fs.write(name, blob)
+
+    def verify(self) -> list[str]:
+        """Re-read the packed files the way the engine's boot scan does.
+
+        The scan at RAM ``0x8007D41C`` DMAs sixteen bytes from the head of every
+        file and only treats it as compressed when it finds ``0x735764B0``
+        there, so a file that has slipped out from under its own header stops
+        loading.  Checking it here means a bad layout can never reach a saved
+        ROM unnoticed.
+        """
+        from . import iff
+
+        found = self.fs.problems()
+        for e in self.fs.entries:
+            start = e.rom_offset(self.fs.base)
+            head = bytes(self.data[start:start + 12])
+            if len(head) < 12:
+                found.append("%s is truncated by the end of the ROM" % e.name)
+                continue
+            magic = struct.unpack_from(">I", head, 0)[0]
+            if magic != iff.ASSET_MAGIC:
+                continue
+            if head[4:8] not in iff.TAGS:
+                continue
+            declared = struct.unpack_from(">I", head, 8)[0]
+            nblocks = (declared + iff.BLOCK_SIZE - 1) // iff.BLOCK_SIZE
+            end = struct.unpack_from(
+                ">I", self.data, start + iff.TABLE_OFFSET + 4 * nblocks)[0] >> 4
+            if end != e.size:
+                found.append(
+                    "%s: the block table ends at 0x%X but the file table says "
+                    "0x%X bytes" % (e.name, end, e.size))
+        return found
 
     def fix_crc(self) -> tuple[int, int]:
         crc = calc_crc(bytes(self.data), self.cic)

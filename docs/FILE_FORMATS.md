@@ -17,7 +17,7 @@ their other N64 titles too.
 | `0x000000`–`0x000040` | standard N64 header (CRCs at `0x10`/`0x14`) |
 | `0x001000`–`0x0DF9C0` | code + rodata, loaded at RAM `0x80000400` |
 | `0x0DF9C0` | packed-file table |
-| `0x0DFC88`–`0xB8540C` | packed file data |
+| `0x0DFC84`–`0xB85408` | packed file data |
 | `0xB8540C`–`0xC00000` | filler ("Hey! What are you doing looking at this binary…") |
 
 ### 1.1 Packed-file table
@@ -31,8 +31,23 @@ per file, 0x20 bytes:
   u32             offset, relative to the data base
 ```
 
-The data base is the table's end rounded up to 8 bytes — `0xDFC88` here. Files
-are stored in offset order with 8-byte alignment between them.
+The data base is the table's end, with **no rounding at all** — `0xDFC84` here.
+The boot scan computes it at RAM `0x8007D378` as `table + 4 + count * 0x20` and
+every offset in the table is relative to that. Getting this wrong by even four
+bytes still lets every file parse (each one begins with a header word, so a
+shifted view merely looks like the header is missing), and still lets a file be
+rewritten in place — but the moment one has to be moved, every file lands four
+bytes past where the engine looks for it and the cartridge stops booting.
+
+Files are stored in offset order, each on a 16-byte boundary, with the gaps
+filled with `0x55`.
+
+Right after computing the base the scan walks the table and DMAs sixteen bytes
+from the head of each file (`0x8007D41C`). A file whose first word is
+`0x735764B0` gets the "compressed" bit set in its entry and takes its *logical*
+size from the third word; anything else is read straight off the cartridge and
+keeps the size in the table. That is the whole of the engine's notion of what a
+packed file is.
 
 Table of contents on the retail cart: `CONFIG.GID`, `RES.BIG`, `CONFIG.BIG`,
 `SHELL.BIG`, `CONFIG.DIR`, `WAVE.GID`, `WAVE.BIG`, `TEAMINFO.IFF`,
@@ -44,8 +59,24 @@ Table of contents on the retail cart: `CONFIG.GID`, `RES.BIG`, `CONFIG.BIG`,
 
 The header CRC pair is the ordinary bootcode checksum over `0x1000`–`0x101000`
 with the CIC-6103 seed `0xA3886759`. Note the roster files live well past that
-window, so a pure roster edit does not actually change the CRC — the editor
-recomputes it anyway.
+window, but the file table at `0x0DF9C0` does not, so any edit that changes a
+file's size lands inside the checksum after all. The editor recomputes it.
+
+### 1.3 Growing a file
+
+Nothing in the ROM refers to a packed file by absolute address: the boot scan
+patches each table entry's offset into a real cartridge address and everything
+downstream goes through that. So a file that outgrows the gap behind it can be
+moved, as long as the table is updated and the files behind it are pushed down
+in step. The editor does exactly that, keeping the files in *front* of it — and
+therefore most of the checksummed window — byte for byte untouched.
+
+It much prefers not to have to. Both offset-table chunks (`PIMG`, `PNAM`) hold
+blobs that declare their own length, so a replacement that fits its existing
+slot is dropped in and padded, leaving every other entry exactly where it was;
+and a recompressed block is padded back out to the length it had before, so the
+blocks behind it keep their offsets too. A one-photo change therefore rewrites
+about 8 KB of a 12 MB cartridge instead of a megabyte and a half.
 
 ---
 
@@ -56,17 +87,24 @@ can seek inside them without decompressing the whole file (`fread` in
 `file.c`, RAM `0x8007D804`, works in `0x2000`-byte blocks).
 
 ```
+u32       0x735764B0, the asset magic the boot scan looks for
 char[4]   'IFF\0' or 'iff\0'
 u32       decoded payload size
 u32[n+1]  block table, n = ceil(size / 0x2000)
 ...       block data
 ```
 
-Each table entry is `(file_offset + 4) << 4 | flag`. The `+ 4` bias is applied
-by the loader; the last entry marks the end of the final block, and the file is
-`last_end + 4` bytes long (the four trailing bytes are filler). `flag == 0`
-means the block is stored verbatim, otherwise it is LZSS-compressed. Every
-block decodes to exactly `0x2000` bytes except the last.
+Each table entry is `file_offset << 4 | flag`, counted from the first byte of
+the file — which is why the first entry reads `0xC + 4 * (n + 1)` and why the
+last one, marking the end of the final block, is exactly the file's length.
+`flag == 0` means the block is stored verbatim, otherwise it is
+LZSS-compressed. Every block decodes to exactly `0x2000` bytes except the last.
+
+The block loader (`0x8007DBFC`) reads the table out of the file's first
+`0x2000` bytes at `+0xC`, DMAs `end - start` bytes into an `0x2000`-byte buffer
+and hands a compressed block to the decompressor. So the table has to live
+inside the first `0x2000` bytes and no stored block may be longer than
+`0x2000`.
 
 ### 2.1 Alignment — the rule that bites
 
@@ -309,14 +347,21 @@ that player's face" a table edit rather than an art job.
 
 ## 8. `TEAMTALK.IFF` — the PA announcer
 
-The only packed file that is **not** block-compressed. It is a bare `LFPT`
-container: a u32 size, the form id, then ordinary chunks.
+The only packed file that carries no `0x735764B0` compression header, so the
+boot scan leaves it alone and the engine reads it straight off the cartridge.
+What is left is a bare `AIFF` chunk list — the same thing the other two files
+hold *inside* their compression wrapper.
 
 ```
+char[4]   'AIFF'
 u32       size of everything after this field
 char[4]   'LFPT'
-repeat:   char[4] chunk id, u32 size, data padded to an even length
+repeat:   char[4] chunk id, u32 size, data padded to a multiple of four
 ```
+
+The chunk walker (`0x80088ABC`) rounds every size up to four before stepping
+over it, so a chunk whose size is not already a multiple of four silently
+desynchronises everything behind it.
 
 | Chunk | Contents |
 | --- | --- |
@@ -344,6 +389,12 @@ The count word sits in front of the offsets, so player *N* owns entries
 is inferred from clip lengths rather than proven — Rick Fox has the shortest
 pair, Shareef Abdur-Rahim one of the longest.
 
-The samples themselves are still opaque: each entry opens with a u32 `4` and a
-u32 decoded length, then compressed audio. Nothing here decodes them, so the
-editor moves whole clips around rather than trying to make new ones.
+The clip data never reaches the file layer: `0x8008AB08` hands its caller a raw
+cartridge address (`offsets[i]` + the file's ROM address + the chunk offset)
+and the length `offsets[i + 1] - offsets[i]`, and the caller DMAs it. The
+samples themselves are still opaque: each entry opens with a u32 `4` and a u32
+decoded length, then compressed audio. Nothing here decodes them, so the editor
+moves whole clips around rather than trying to make new ones. Because a clip
+declares its own length, a shorter clip dropped into a longer slot can simply
+be padded — which is how the editor avoids resizing a 3.6 MB file for a
+one-name change.

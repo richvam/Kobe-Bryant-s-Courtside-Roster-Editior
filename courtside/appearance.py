@@ -66,12 +66,10 @@ class AppearanceDatabase:
         self.copy_photo(dst_player_id, src_player_id)
 
     def swap_likeness(self, a: int, b: int) -> None:
-        faces = self.faces.blobs()
-        photos = self.photos.blobs()
-        faces[a], faces[b] = faces[b], faces[a]
-        photos[a], photos[b] = photos[b], photos[a]
-        self.faces.rebuild(faces)
-        self.photos.rebuild(photos)
+        self.faces.replace_many({a: self.faces.entry(b), b: self.faces.entry(a)})
+        self.photos.replace_many({a: self.photos.entry(b), b: self.photos.entry(a)})
+        self._photo_cache.pop(a, None)
+        self._photo_cache.pop(b, None)
 
     # -- rendering ------------------------------------------------------
     def photo(self, player_id: int) -> tuple[int, bytes] | None:
@@ -155,9 +153,7 @@ class AppearanceDatabase:
             pass
         blob = (struct.pack(">I", magic) + b"RAW\0"
                 + struct.pack(">I", len(payload)) + lzss.compress(payload))
-        blobs = self.photos.blobs()
-        blobs[player_id] = blob
-        self.photos.rebuild(blobs)
+        self.photos.replace(player_id, blob)
         self._photo_cache.pop(player_id, None)
 
     def import_photo(self, player_id: int, path: str, mode: str = "crop",
@@ -177,7 +173,7 @@ class AppearanceDatabase:
         self.chunkfile.set(b"PTEX", self.faces.data)
         self.chunkfile.set(b"PIMG", self.photos.data)
         payload = iff.build_chunks(self.chunkfile)
-        return iff.pack(payload, magic=self.container.magic, original=self.container)
+        return iff.pack(payload, original=self.container)
 
 
 def load(blob: bytes) -> AppearanceDatabase:

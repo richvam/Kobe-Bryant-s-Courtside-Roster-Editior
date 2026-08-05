@@ -288,6 +288,20 @@ def cmd_verify(ed: RosterEditor, args) -> int:
         print("TEAMDATA.IFF does not round-trip", file=sys.stderr)
     else:
         print("TEAMDATA.IFF round-trips exactly (%d bytes)" % len(data))
+    talk = ed.rom.read("TEAMTALK.IFF")
+    if ed.announcer.to_file() != talk:
+        ok = False
+        print("TEAMTALK.IFF does not round-trip", file=sys.stderr)
+    else:
+        print("TEAMTALK.IFF round-trips exactly (%d bytes)" % len(talk))
+    layout = ed.rom.verify()
+    if layout:
+        ok = False
+        for problem in layout:
+            print("layout: %s" % problem, file=sys.stderr)
+    else:
+        print("packed files sit where the boot scan looks for them "
+              "(data base 0x%X)" % ed.rom.fs.base)
     from .rom import calc_crc
     have = tuple(int.from_bytes(ed.rom.data[0x10 + i * 4:0x14 + i * 4], "big")
                  for i in range(2))

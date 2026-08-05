@@ -277,12 +277,24 @@ drops the alignment. Every container is checked against those invariants
 before a ROM is written, and the save is refused rather than producing a
 cartridge that will not boot.
 
-Because the encoder does a shortest-path parse over the format's real bit
-costs, the re-packed file usually ends up *smaller* than the original, so it
-drops straight back into its existing slot. If an edit ever did overflow, the
-file is relocated into the ROM's trailing filler and its entry in the packed
-file table is updated. Either way the header CRC is recomputed with the
-cartridge's CIC-6103 seed before the ROM is written.
+Photographs and announcer clips live in offset tables, and both kinds of blob
+declare their own length, so a replacement that fits its existing slot is
+dropped straight in and padded — every other entry stays exactly where it was.
+A recompressed block is likewise padded back out to the length it had before,
+so the blocks behind it keep their offsets. The upshot is that changing one
+player's portrait rewrites about 8 KB of a 12 MB cartridge instead of shunting
+a megabyte and a half downhill.
+
+When something genuinely does not fit — importing a picture for a player who
+never had one, say — the file grows and the packed files behind it are pushed
+down the ROM in step, with the file table rewritten to match. The files in
+*front* of it never move. Before anything is written, the whole cartridge is
+re-read the way the console's boot scan reads it: the data base is the file
+table's end with no rounding, each file has to still start with its own header,
+and its block table has to end exactly where the file table says the file does.
+If any of that fails the save is refused rather than producing a ROM that will
+not boot. Finally the header CRC is recomputed with the cartridge's CIC-6103
+seed.
 
 ## Tests
 
@@ -291,7 +303,7 @@ python3 tests/test_courtside.py                       # codec + model tests
 COURTSIDE_ROM=/path/to/rom.z64 python3 tests/test_courtside.py   # everything
 ```
 
-The ROM-backed tests check that both packed files re-pack byte-identically,
+The ROM-backed tests check that all three packed files re-pack byte-identically,
 that edits survive a save-and-reload, that a saved ROM's CRC validates, and
 that trades and releases leave the roster tables consistent.
 
@@ -315,6 +327,14 @@ version and the whole command line.
 
 **The window will not open over SSH or on a headless box** — there is no
 display to draw on. Use the browser version (`serve`) or the command line.
+
+**An edited ROM will not load.** Run `python3 -m courtside your.z64 verify` on
+it. That re-reads the cartridge the way the console's boot scan does and prints
+where the packed files sit; anything it complains about is a real fault, and
+the editor now refuses to write such a ROM in the first place. If `verify` is
+happy, check you are loading the file the editor wrote rather than the original
+— and note that an emulator may need the ROM reloaded rather than resumed from
+a save state.
 
 **Saving takes a few seconds** — the game's data is compressed and has to be
 repacked. Reassigning a likeness makes it slower still, because `TEAMDATA.IFF`

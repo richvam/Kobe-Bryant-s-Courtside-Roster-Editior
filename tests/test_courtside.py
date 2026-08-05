@@ -343,6 +343,99 @@ class TestPhotoImport(unittest.TestCase):
 
 
 @needs_rom
+class TestFileSystemLayout(unittest.TestCase):
+    """Where the packed files actually start, and what moving one costs.
+
+    The boot scan at RAM 0x8007D378 works out the data base as the count word
+    plus the file table, with no rounding, then reads sixteen bytes from the
+    head of every file to look for the ``0x735764B0`` compression magic.  A
+    base that is even four bytes out reads and writes every file from under its
+    own header - which nothing notices until an edit makes a file grow and the
+    files behind it have to move.
+    """
+
+    def setUp(self):
+        self.editor = RosterEditor.open(ROM_PATH)
+        self.rom = self.editor.rom
+        self.tmp = tempfile.mkdtemp()
+
+    def out(self):
+        return os.path.join(self.tmp, "out.z64")
+
+    def test_data_base_is_the_end_of_the_table(self):
+        fs = self.rom.fs
+        self.assertEqual(fs.base, fs.table_offset + 4 + fs.count * 0x20)
+        self.assertEqual(fs.base, 0xDFC84)
+
+    def test_every_compressed_file_starts_with_its_magic(self):
+        seen = 0
+        for name in ("TEAMINFO.IFF", "TEAMDATA.IFF"):
+            blob = self.rom.read(name)
+            self.assertTrue(iff.is_container(blob), name)
+            seen += 1
+        self.assertEqual(seen, 2)
+        # TEAMTALK carries no compression header, so the scan leaves it raw.
+        self.assertFalse(iff.is_container(self.rom.read("TEAMTALK.IFF")))
+
+    def test_shipped_rom_verifies(self):
+        self.assertEqual(self.rom.verify(), [])
+
+    def test_growing_a_file_moves_the_ones_behind_it_intact(self):
+        before = {e.name: self.rom.read(e.name) for e in self.rom.fs.entries}
+        grown = self.rom.read("WAVE.DIR") + b"\0" * 4096   # no compression header
+        note = self.rom.write("WAVE.DIR", grown)
+        self.assertIn("moved down", note)
+        self.assertEqual(self.rom.verify(), [])
+        self.assertEqual(self.rom.read("WAVE.DIR"), grown)
+        for name, blob in before.items():
+            if name != "WAVE.DIR":
+                self.assertEqual(self.rom.read(name), blob, name)
+
+    def test_growing_a_file_leaves_the_ones_in_front_where_they_were(self):
+        before = {e.name: e.offset for e in self.rom.fs.entries}
+        target = self.rom.fs.entry("WAVE.DIR")
+        ahead = [e.name for e in self.rom.fs.entries if e.offset < target.offset]
+        self.rom.write("WAVE.DIR", self.rom.read("WAVE.DIR") + b"\0" * 4096)
+        for name in ahead:
+            self.assertEqual(self.rom.fs.entry(name).offset, before[name], name)
+
+    def test_a_size_that_disagrees_with_the_block_table_is_caught(self):
+        entry = self.rom.fs.entry("TEAMDATA.IFF")
+        entry.size -= 0x10
+        self.rom.fs._flush(entry)
+        self.assertTrue(self.rom.verify())
+
+    def test_saving_a_broken_layout_is_refused(self):
+        entry = self.rom.fs.entry("TEAMDATA.IFF")
+        entry.size += 0x10000           # now it swallows the file behind it
+        self.rom.fs._flush(entry)
+        with self.assertRaises(EditorError):
+            self.editor.save(self.out())
+
+    def test_a_photo_that_fits_its_slot_moves_nothing(self):
+        before = self.rom.read("TEAMDATA.IFF")
+        app = self.editor.appearance
+        was = list(app.photos.offsets)
+        order = sorted(range(app.photos.count), key=app.photos.slot)
+        app.copy_photo(order[-1], order[-40])   # a smaller picture into a big slot
+        self.assertEqual(app.photos.offsets, was)
+        after = app.to_file()
+        self.assertEqual(len(after), len(before))
+        changed = sum(1 for a, b in zip(before, after) if a != b)
+        self.assertLess(changed, 0x4000, "a one-photo edit rewrote %d bytes" % changed)
+
+    def test_a_clip_that_fits_its_slot_keeps_the_file_the_same_size(self):
+        before = self.rom.read("TEAMTALK.IFF")
+        adb = self.editor.announcer
+        lengths = {p.player_id: sum(adb.clip_lengths(p.player_id))
+                   for p in self.editor.db.players if adb.has_call(p.player_id)}
+        longest = max(lengths, key=lengths.get)
+        shortest = min(lengths, key=lengths.get)
+        adb.copy_call(longest, shortest)
+        self.assertEqual(len(adb.to_file()), len(before))
+
+
+@needs_rom
 class TestAlignment(unittest.TestCase):
     """Everything the engine reads has to stay on four-byte boundaries.
 
@@ -355,11 +448,14 @@ class TestAlignment(unittest.TestCase):
         self.editor = RosterEditor.open(ROM_PATH)
         self.tmp = tempfile.mkdtemp()
 
-    def block_starts(self, blob):
+    def block_table(self, blob):
         import struct as _s
-        size = _s.unpack_from(">I", blob, 4)[0]
+        size = _s.unpack_from(">I", blob, iff.TABLE_OFFSET - 4)[0]
         n = (size + 0x1FFF) // 0x2000
-        return [(t >> 4) - 4 for t in _s.unpack_from(">%dI" % (n + 1), blob, 8)]
+        return _s.unpack_from(">%dI" % (n + 1), blob, iff.TABLE_OFFSET)
+
+    def block_starts(self, blob):
+        return [t >> 4 for t in self.block_table(blob)]
 
     def assert_sound(self, blob, what):
         self.assertEqual(iff.check(blob), [], what)
@@ -404,22 +500,22 @@ class TestAlignment(unittest.TestCase):
         for chunk in iff.parse_chunks(payload).chunks:
             self.assertEqual(len(chunk.data) % 4, 0, chunk.ident)
 
-    def test_a_verbatim_block_never_outgrows_the_engine_buffer(self):
-        # padding a stored block would overflow the 0x2000 buffer it is DMA'd into
+    def test_no_block_ever_outgrows_the_engine_buffer(self):
+        # every block is DMA'd into a 0x2000 buffer, stored or compressed
         blob = self.editor.appearance.to_file()
         starts = self.block_starts(blob)
-        import struct as _s
-        size = _s.unpack_from(">I", blob, 4)[0]
-        n = (size + 0x1FFF) // 0x2000
-        table = _s.unpack_from(">%dI" % (n + 1), blob, 8)
-        for i in range(n):
-            if (table[i] & 0xF) == 0:
-                self.assertLessEqual(starts[i + 1] - starts[i], 0x2000, "block %d" % i)
+        for i in range(len(starts) - 1):
+            self.assertLessEqual(starts[i + 1] - starts[i], 0x2000, "block %d" % i)
+
+    def test_the_last_block_ends_at_the_end_of_the_file(self):
+        # the file table's size comes from here, so a stray tail loses bytes
+        for blob in (self.editor.db.to_file(), self.editor.appearance.to_file()):
+            self.assertEqual(self.block_starts(blob)[-1], len(blob))
 
     def test_save_refuses_a_container_that_would_not_load(self):
         editor = RosterEditor.open(ROM_PATH)
         broken = bytearray(editor.db.to_file())
-        broken[8:12] = (0xDEADBE0).to_bytes(4, "big")   # bend the block table
+        broken[iff.TABLE_OFFSET:iff.TABLE_OFFSET + 4] = (0xDEADBE0).to_bytes(4, "big")
         editor.db.to_file = lambda: bytes(broken)
         with self.assertRaises(EditorError):
             editor.save(os.path.join(self.tmp, "nope.z64"))
@@ -660,7 +756,9 @@ class TestEditing(unittest.TestCase):
         self.editor.save(path)
         again = RosterEditor.open(path)
         app = again.appearance
-        self.assertEqual(app.photos.entry(dst.player_id), app.photos.entry(src.player_id))
+        # A blob dropped into a roomier slot keeps the slot's length, so compare
+        # the pictures rather than the raw bytes.
+        self.assertEqual(app.photo(dst.player_id), app.photo(src.player_id))
         self.assertEqual(app.faces.entry(dst.player_id), app.faces.entry(src.player_id))
         self.assertEqual(again.one("Shaquille").appearance_bytes,
                          again.one("Kobe Bryant").appearance_bytes)

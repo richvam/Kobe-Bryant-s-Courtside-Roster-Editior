@@ -1,11 +1,14 @@
 """The public address announcer's recordings, in ``TEAMTALK.IFF``.
 
-Unlike the other packed files this one is not block-compressed - it is a plain
-``LFPT`` container::
+Unlike the other packed files this one carries no ``0x735764B0`` compression
+header, so the boot-time scan leaves it alone and the engine reads it straight
+off the cartridge.  What is left is a bare ``AIFF`` chunk list - the same thing
+the other two files hold *inside* their compression wrapper::
 
+    char[4]   'AIFF'
     u32       size of everything after this field
     char[4]   'LFPT'
-    repeat:   char[4] chunk id, u32 size, data padded to an even length
+    repeat:   char[4] chunk id, u32 size, data padded to a multiple of four
 
 ``PNAM`` holds the spoken player names and ``TALK`` the general commentary,
 both in the usual count/offset-table shape.
@@ -27,6 +30,7 @@ from __future__ import annotations
 
 import struct
 
+from . import iff
 from .offsets import OffsetTable
 
 FORM = b"LFPT"
@@ -40,23 +44,21 @@ class AnnouncerDatabase:
     """Parsed ``TEAMTALK.IFF``."""
 
     def __init__(self, data: bytes) -> None:
-        if data[4:8] != FORM:
-            raise AnnouncerError("not an %s container (found %r)" % (FORM.decode(), data[4:8]))
-        self.chunks: list[tuple[bytes, bytes]] = []
-        off = 8
-        while off + 8 <= len(data):
-            tag = data[off:off + 4]
-            size = struct.unpack_from(">I", data, off + 4)[0]
-            if size == 0 or off + 8 + size > len(data):
-                break
-            self.chunks.append((tag, data[off + 8:off + 8 + size]))
-            off += 8 + size + (size & 1)
-        #: alignment filler the ROM leaves past the last chunk
-        self.tail = bytes(data[off:])
-        body = dict(self.chunks)
-        if b"PNAM" not in body:
-            raise AnnouncerError("this TEAMTALK.IFF has no PNAM chunk")
-        self.names = OffsetTable(body[b"PNAM"])
+        try:
+            self.chunkfile = iff.parse_chunks(data)
+        except iff.ContainerError as exc:
+            raise AnnouncerError(str(exc)) from None
+        if self.chunkfile.form != FORM:
+            raise AnnouncerError(
+                "not an %s container (found %r)" % (FORM.decode(), self.chunkfile.form))
+        try:
+            self.names = OffsetTable(self.chunkfile.get(b"PNAM"))
+        except KeyError:
+            raise AnnouncerError("this TEAMTALK.IFF has no PNAM chunk") from None
+
+    @property
+    def chunks(self) -> list[tuple[bytes, bytes]]:
+        return [(c.ident, c.data) for c in self.chunkfile.chunks]
 
     # -- clip lookup ----------------------------------------------------
     def clip_indices(self, player_id: int) -> tuple[int, int]:
@@ -84,20 +86,21 @@ class AnnouncerDatabase:
         """Make the announcer say ``src``'s name for ``dst``."""
         dst_first, dst_last = self.clip_indices(dst_player_id)
         src_first, src_last = self.clip_indices(src_player_id)
-        blobs = self.names.blobs()
+        changes: dict[int, bytes] = {}
         if given_name:
-            blobs[dst_first] = blobs[src_first]
+            changes[dst_first] = self.names.entry(src_first)
         if surname:
-            blobs[dst_last] = blobs[src_last]
-        self.names.rebuild(blobs)
+            changes[dst_last] = self.names.entry(src_last)
+        self.names.replace_many(changes)
 
     def swap_call(self, a_player_id: int, b_player_id: int) -> None:
         a_first, a_last = self.clip_indices(a_player_id)
         b_first, b_last = self.clip_indices(b_player_id)
-        blobs = self.names.blobs()
-        blobs[a_first], blobs[b_first] = blobs[b_first], blobs[a_first]
-        blobs[a_last], blobs[b_last] = blobs[b_last], blobs[a_last]
-        self.names.rebuild(blobs)
+        entry = self.names.entry
+        self.names.replace_many({
+            a_first: entry(b_first), b_first: entry(a_first),
+            a_last: entry(b_last), b_last: entry(a_last),
+        })
 
     def silence(self, player_id: int) -> None:
         """Leave the announcer with nothing to say for this player."""
@@ -108,13 +111,11 @@ class AnnouncerDatabase:
 
     # -- serialisation --------------------------------------------------
     def to_file(self) -> bytes:
-        body = bytearray(FORM)
-        for tag, data in self.chunks:
-            payload = self.names.data if tag == b"PNAM" else data
-            body += tag + struct.pack(">I", len(payload)) + payload
-            if len(payload) & 1:
-                body += b"\0"
-        return struct.pack(">I", len(body)) + bytes(body) + self.tail
+        self.chunkfile.set(b"PNAM", self.names.data)
+        return iff.build_chunks(self.chunkfile)
+
+    def problems(self) -> list[str]:
+        return iff.check_chunks(self.to_file())
 
 
 def load(blob: bytes) -> AnnouncerDatabase:
