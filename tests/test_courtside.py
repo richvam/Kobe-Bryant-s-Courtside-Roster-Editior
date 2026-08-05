@@ -9,6 +9,7 @@ ROM is available - set ``COURTSIDE_ROM`` or drop one at ``tests/courtside.z64``.
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import random
 import sys
@@ -121,13 +122,13 @@ class TestGuiModule(unittest.TestCase):
     """The GUI is only importable where Tkinter is installed."""
 
     def test_imports_and_exposes_main(self):
-        try:
-            import tkinter  # noqa: F401
-        except ImportError:
+        if importlib.util.find_spec("tkinter") is None:
             self.skipTest("Tkinter is not installed in this interpreter")
+        import tkinter
+
         from courtside import gui
         self.assertTrue(callable(gui.main))
-        self.assertTrue(issubclass(gui.CourtsideGUI, __import__("tkinter").Tk))
+        self.assertTrue(issubclass(gui.CourtsideGUI, tkinter.Tk))
 
     def test_launcher_script_is_runnable(self):
         launcher = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
