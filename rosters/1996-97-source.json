@@ -1,0 +1,1174 @@
+{
+  "season": "1996-97",
+  "as_of": "opening night, 1 November 1996",
+  "note": "Research data, not an import file. The ROM ships 1997-98 midseason rosters; this is the season before it. Starter slots 1-5 follow the conventional PG-to-C ordering; the game assigns the slots no positional meaning of its own.",
+  "team_renames": {
+    "Washington": {
+      "city": "Washington",
+      "abbreviation": "WAS",
+      "name": "Bullets"
+    }
+  },
+  "teams": [
+    {
+      "team": "Atlanta",
+      "bench_confidence": "medium",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Mookie Blaylock"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Steve Smith"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Tyrone Corbin"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Christian Laettner"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Dikembe Mutombo"
+        }
+      ],
+      "bench": [
+        "Alan Henderson",
+        "Ken Norman",
+        "Eldridge Recasner",
+        "Jon Barry",
+        "Priest Lauderdale",
+        "Henry James",
+        "Donnie Boyce"
+      ]
+    },
+    {
+      "team": "Boston",
+      "bench_confidence": "low",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "David Wesley"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Todd Day"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Eric Williams"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Antoine Walker"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Dino Radja"
+        }
+      ],
+      "bench": [
+        "Dana Barros",
+        "Rick Fox",
+        "Pervis Ellison",
+        "Greg Minor",
+        "Brett Szabo",
+        "Alton Lister",
+        "Steve Hamer"
+      ]
+    },
+    {
+      "team": "Charlotte",
+      "bench_confidence": "medium",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Muggsy Bogues"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Dell Curry"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Glen Rice"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Anthony Mason"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Vlade Divac"
+        }
+      ],
+      "bench": [
+        "Matt Geiger",
+        "Scott Burrell",
+        "Tony Delk",
+        "Malik Rose",
+        "Rafael Addison",
+        "Tony Smith",
+        "Anthony Goldwire"
+      ]
+    },
+    {
+      "team": "Chicago",
+      "bench_confidence": "high",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Ron Harper"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Michael Jordan"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Scottie Pippen"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Dennis Rodman"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Luc Longley"
+        }
+      ],
+      "bench": [
+        "Toni Kukoc",
+        "Steve Kerr",
+        "Bill Wennington",
+        "Jud Buechler",
+        "Randy Brown",
+        "Robert Parish",
+        "Jason Caffey"
+      ]
+    },
+    {
+      "team": "Cleveland",
+      "bench_confidence": "low",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Terrell Brandon"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Bobby Phills"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Chris Mills"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Tyrone Hill"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Danny Ferry"
+        }
+      ],
+      "bench": [
+        "Vitaly Potapenko",
+        "Bob Sura",
+        "Antonio Lang",
+        "Reggie Geary",
+        "Donny Marshall",
+        "Mark West",
+        "Zydrunas Ilgauskas"
+      ]
+    },
+    {
+      "team": "Dallas",
+      "bench_confidence": "low",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Jason Kidd"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Jim Jackson"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Jamal Mashburn"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Chris Gatling"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Eric Montross"
+        }
+      ],
+      "bench": [
+        "George McCloud",
+        "Derek Harper",
+        "Tony Dumas",
+        "Loren Meyer",
+        "Oliver Miller",
+        "Terry Davis",
+        "Erick Strickland"
+      ]
+    },
+    {
+      "team": "Denver",
+      "bench_confidence": "low",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Mark Jackson"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Bryant Stith"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "LaPhonso Ellis"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Antonio McDyess"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Ervin Johnson"
+        }
+      ],
+      "bench": [
+        "Dale Ellis",
+        "Sarunas Marciulionis",
+        "Tom Hammonds",
+        "Ricky Pierce",
+        "Don MacLean",
+        "Eric Leckner",
+        "Randy Woods"
+      ]
+    },
+    {
+      "team": "Detroit",
+      "bench_confidence": "medium",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Lindsey Hunter"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Joe Dumars"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Grant Hill"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Otis Thorpe"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Theo Ratliff"
+        }
+      ],
+      "bench": [
+        "Terry Mills",
+        "Grant Long",
+        "Stacey Augmon",
+        "Jerome Williams",
+        "Rick Mahorn",
+        "Michael Curry",
+        "Don Reid"
+      ]
+    },
+    {
+      "team": "Golden State",
+      "bench_confidence": "medium",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Mark Price"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Latrell Sprewell"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Joe Smith"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Donyell Marshall"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Felton Spencer"
+        }
+      ],
+      "bench": [
+        "Chris Mullin",
+        "B.J. Armstrong",
+        "Todd Fuller",
+        "Bimbo Coles",
+        "Andrew DeClercq",
+        "Clifford Rozier",
+        "David Wood"
+      ]
+    },
+    {
+      "team": "Houston",
+      "bench_confidence": "high",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Matt Maloney"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Clyde Drexler"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Mario Elie"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Charles Barkley"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Hakeem Olajuwon"
+        }
+      ],
+      "bench": [
+        "Kevin Willis",
+        "Othella Harrington",
+        "Matt Bullard",
+        "Emanual Davis",
+        "Eddie Johnson",
+        "Sedale Threatt",
+        "Brent Price"
+      ]
+    },
+    {
+      "team": "Indiana",
+      "bench_confidence": "medium",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Travis Best"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Reggie Miller"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Derrick McKey"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Dale Davis"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Rik Smits"
+        }
+      ],
+      "bench": [
+        "Jalen Rose",
+        "Antonio Davis",
+        "Erick Dampier",
+        "Duane Ferrell",
+        "Fred Hoiberg",
+        "Reggie Williams",
+        "Haywoode Workman"
+      ]
+    },
+    {
+      "team": "LA Clippers",
+      "bench_confidence": "low",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Pooh Richardson"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Brent Barry"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Rodney Rogers"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Loy Vaught"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Stanley Roberts"
+        }
+      ],
+      "bench": [
+        "Malik Sealy",
+        "Terry Dehere",
+        "Lamond Murray",
+        "Bo Outlaw",
+        "Darrick Martin",
+        "Eric Piatkowski",
+        "Brian Williams"
+      ]
+    },
+    {
+      "team": "LA Lakers",
+      "bench_confidence": "high",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Nick Van Exel"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Eddie Jones"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Cedric Ceballos"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Elden Campbell"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Shaquille O'Neal"
+        }
+      ],
+      "bench": [
+        "Kobe Bryant",
+        "Byron Scott",
+        "Derek Fisher",
+        "Travis Knight",
+        "Corie Blount",
+        "Sean Rooks",
+        "Jerome Kersey"
+      ]
+    },
+    {
+      "team": "Miami",
+      "bench_confidence": "medium",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Tim Hardaway"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Voshon Lenard"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Dan Majerle"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "P.J. Brown"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Alonzo Mourning"
+        }
+      ],
+      "bench": [
+        "Sasha Danilovic",
+        "Isaac Austin",
+        "Keith Askins",
+        "Willie Anderson",
+        "Martin Muursepp",
+        "Kurt Thomas",
+        "Ed Pinckney"
+      ]
+    },
+    {
+      "team": "Milwaukee",
+      "bench_confidence": "medium",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Sherman Douglas"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Ray Allen"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Glenn Robinson"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Vin Baker"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Andrew Lang"
+        }
+      ],
+      "bench": [
+        "Johnny Newman",
+        "Armon Gilliam",
+        "Elliot Perry",
+        "Shawn Respert",
+        "Marty Conlon",
+        "Terry Cummings",
+        "Jeff Nordgaard"
+      ]
+    },
+    {
+      "team": "Minnesota",
+      "bench_confidence": "high",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Terry Porter"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Doug West"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Tom Gugliotta"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Kevin Garnett"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Dean Garrett"
+        }
+      ],
+      "bench": [
+        "Stephon Marbury",
+        "Sam Mitchell",
+        "Cherokee Parks",
+        "James Robinson",
+        "Stojko Vrankovic",
+        "Chris Carr",
+        "Shane Heal"
+      ]
+    },
+    {
+      "team": "New Jersey",
+      "bench_confidence": "low",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Robert Pack"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Kendall Gill"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Kevin Edwards"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Jayson Williams"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Shawn Bradley"
+        }
+      ],
+      "bench": [
+        "Khalid Reeves",
+        "Ed O'Bannon",
+        "Tony Massenburg",
+        "Yinka Dare",
+        "Xavier McDaniel",
+        "Sean Higgins",
+        "Vincent Askew"
+      ]
+    },
+    {
+      "team": "New York",
+      "bench_confidence": "high",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Chris Childs"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Allan Houston"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Larry Johnson"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Charles Oakley"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Patrick Ewing"
+        }
+      ],
+      "bench": [
+        "John Starks",
+        "Buck Williams",
+        "Charlie Ward",
+        "Herb Williams",
+        "Walter McCarty",
+        "John Wallace",
+        "Dontae Jones"
+      ]
+    },
+    {
+      "team": "Orlando",
+      "bench_confidence": "medium",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Penny Hardaway"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Nick Anderson"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Dennis Scott"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Horace Grant"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Rony Seikaly"
+        }
+      ],
+      "bench": [
+        "Brian Shaw",
+        "Donald Royal",
+        "Darrell Armstrong",
+        "Derek Strong",
+        "Gerald Wilkins",
+        "David Vaughn",
+        "Amal McCaskill"
+      ]
+    },
+    {
+      "team": "Philadelphia",
+      "bench_confidence": "low",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Allen Iverson"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Jerry Stackhouse"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Clarence Weatherspoon"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Derrick Coleman"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Michael Cage"
+        }
+      ],
+      "bench": [
+        "Rex Walters",
+        "Mark Davis",
+        "Lucious Harris",
+        "Scott Williams",
+        "Doug Overton",
+        "Trevor Ruffin",
+        "Tim Kempton"
+      ]
+    },
+    {
+      "team": "Phoenix",
+      "bench_confidence": "medium",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Kevin Johnson"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Michael Finley"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Wesley Person"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "A.C. Green"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Hot Rod Williams"
+        }
+      ],
+      "bench": [
+        "Sam Cassell",
+        "Robert Horry",
+        "Danny Manning",
+        "Rex Chapman",
+        "Mark Bryant",
+        "Pete Chilcutt",
+        "Steve Nash"
+      ]
+    },
+    {
+      "team": "Portland",
+      "bench_confidence": "medium",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Kenny Anderson"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Isaiah Rider"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Clifford Robinson"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Rasheed Wallace"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Arvydas Sabonis"
+        }
+      ],
+      "bench": [
+        "Gary Trent",
+        "Aaron McKie",
+        "Dontonio Wingfield",
+        "Chris Dudley",
+        "Randolph Childress",
+        "Jermaine O'Neal",
+        "Marcus Brown"
+      ]
+    },
+    {
+      "team": "Sacramento",
+      "bench_confidence": "medium",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Mahmoud Abdul-Rauf"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Mitch Richmond"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Billy Owens"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Brian Grant"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Olden Polynice"
+        }
+      ],
+      "bench": [
+        "Corliss Williamson",
+        "Michael Smith",
+        "Bobby Hurley",
+        "Tyus Edney",
+        "Lionel Simmons",
+        "Duane Causwell",
+        "Kevin Gamble"
+      ]
+    },
+    {
+      "team": "San Antonio",
+      "bench_confidence": "medium",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Avery Johnson"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Vinny Del Negro"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Chuck Person"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Sean Elliott"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "David Robinson"
+        }
+      ],
+      "bench": [
+        "Dominique Wilkins",
+        "Vernon Maxwell",
+        "Charles Smith",
+        "Will Perdue",
+        "Monty Williams",
+        "Carl Herrera",
+        "Cory Alexander"
+      ]
+    },
+    {
+      "team": "Seattle",
+      "bench_confidence": "high",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Gary Payton"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Hersey Hawkins"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Detlef Schrempf"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Shawn Kemp"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Jim McIlvaine"
+        }
+      ],
+      "bench": [
+        "Sam Perkins",
+        "Nate McMillan",
+        "Eric Snow",
+        "David Wingate",
+        "Craig Ehlo",
+        "Greg Graham",
+        "Sherell Ford"
+      ]
+    },
+    {
+      "team": "Toronto",
+      "bench_confidence": "medium",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Damon Stoudamire"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Doug Christie"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Walt Williams"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Popeye Jones"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Marcus Camby"
+        }
+      ],
+      "bench": [
+        "Carlos Rogers",
+        "Sharone Wright",
+        "Hubert Davis",
+        "Zan Tabak",
+        "Acie Earl",
+        "Reggie Slater",
+        "Jimmy King"
+      ]
+    },
+    {
+      "team": "Utah",
+      "bench_confidence": "high",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "John Stockton"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Jeff Hornacek"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Bryon Russell"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Karl Malone"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Greg Ostertag"
+        }
+      ],
+      "bench": [
+        "Antoine Carr",
+        "Shandon Anderson",
+        "Howard Eisley",
+        "Adam Keefe",
+        "Chris Morris",
+        "Greg Foster",
+        "Stephen Howard"
+      ]
+    },
+    {
+      "team": "Vancouver",
+      "bench_confidence": "low",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Greg Anthony"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Anthony Peeler"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Shareef Abdur-Rahim"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "George Lynch"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Bryant Reeves"
+        }
+      ],
+      "bench": [
+        "Blue Edwards",
+        "Lee Mayberry",
+        "Chris Robinson",
+        "Roy Rogers",
+        "Doug Edwards",
+        "Lawrence Moten",
+        "Anthony Avent"
+      ]
+    },
+    {
+      "team": "Washington",
+      "bench_confidence": "medium",
+      "starters": [
+        {
+          "slot": 1,
+          "position": "PG",
+          "player": "Rod Strickland"
+        },
+        {
+          "slot": 2,
+          "position": "SG",
+          "player": "Calbert Cheaney"
+        },
+        {
+          "slot": 3,
+          "position": "SF",
+          "player": "Juwan Howard"
+        },
+        {
+          "slot": 4,
+          "position": "PF",
+          "player": "Chris Webber"
+        },
+        {
+          "slot": 5,
+          "position": "C",
+          "player": "Gheorghe Muresan"
+        }
+      ],
+      "bench": [
+        "Tim Legler",
+        "Tracy Murray",
+        "Harvey Grant",
+        "Ledell Eackles",
+        "Ashraf Amaya",
+        "Chris Whitney",
+        "Ben Wallace"
+      ]
+    }
+  ]
+}
