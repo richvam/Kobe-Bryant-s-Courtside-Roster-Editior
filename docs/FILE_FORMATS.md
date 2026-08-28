@@ -347,6 +347,10 @@ that player's face" a table edit rather than an art job.
 
 ## 8. `TEAMTALK.IFF` — the PA announcer
 
+> The editor does not write this file. Rewriting it produced ROMs that would
+> not boot, so announcer editing was removed; what follows is a record of the
+> format only.
+
 The only packed file that carries no `0x735764B0` compression header, so the
 boot scan leaves it alone and the engine reads it straight off the cartridge.
 What is left is a bare `AIFF` chunk list — the same thing the other two files

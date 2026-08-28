@@ -47,11 +47,6 @@ Python 3.10 or newer and nothing else.
 - **Save any roster photo as a PNG**, one at a time or all 384 at once
 - Roster photos are decoded and displayed, so you can see what you are picking
 
-**The PA announcer**
-- Change the name the announcer shouts when a player scores, by borrowing
-  another player's recorded call
-- Swap two players' calls, or silence a player entirely
-
 **Whole rosters**
 - Export everything to JSON, edit it however you like, import it back
 
@@ -124,20 +119,6 @@ sorted by depth chart, name, overall or number. **Tools → Check roster
 consistency** reports any team that has drifted from twelve players and a full
 starting five.
 
-### A browser version too
-
-If you would rather work in a browser — or want to edit from another machine on
-your own network — the same editor is available as a local page:
-
-```sh
-python3 -m courtside courtside.z64 serve
-```
-
-That serves `127.0.0.1` from Python's own HTTP server. It is still fully
-offline: no CDNs, no external requests, nothing leaves your machine.
-
-![The browser version](docs/screenshot-appearance.png)
-
 ## The command line
 
 Every editing command takes `-o/--output` and writes a new ROM.
@@ -171,11 +152,6 @@ python3 -m courtside rom.z64 photo --all -o photos/           # every player
 python3 -m courtside rom.z64 photo --all --team Lakers -o photos/
 python3 -m courtside rom.z64 setphoto "Kobe Bryant" me.png -o out.z64
 python3 -m courtside rom.z64 setphoto "Kobe Bryant" me.png -o out.z64 --fit stretch
-
-# what the announcer shouts when he scores
-python3 -m courtside rom.z64 announcer "Sean Rooks" "Kobe Bryant" -o out.z64
-python3 -m courtside rom.z64 announcer "Sean Rooks" "Kobe Bryant" --swap -o out.z64
-python3 -m courtside rom.z64 announcer "Sean Rooks" --silence -o out.z64
 
 # bulk work
 python3 -m courtside rom.z64 export -o roster.json
@@ -247,20 +223,11 @@ mostly just speckles flat areas like a studio backdrop.
 
 ## The PA announcer
 
-Every player has two recordings in `TEAMTALK.IFF` — Vic Orlando saying his
-given name and his surname — and the game looks them up by player id. The
-editor can hand one player another player's call, swap two, or silence one.
-
-The hard limit: **only names already on tape can be used.** There are 384 of
-them and no way to make new ones, so renaming a player to Jordan will not make
-the announcer say "Jordan". Pick the closest recorded name instead.
-
-Changing a call usually makes `TEAMTALK.IFF` grow by a few hundred bytes, which
-is more than the spare room in its slot. When that happens the editor relays
-the whole packed-file area — every file keeps its order but moves up against
-its neighbour, and the file table is rewritten to match. The engine finds its
-files through that table, so this is well-defined, but it is a heavier change
-than an in-place patch, and it has not been tried on hardware.
+Editing the announcer's recordings is **not available.** `TEAMTALK.IFF` holds
+two clips per player and the editor used to be able to hand one player another
+player's call, but a ROM saved that way would not boot, so the feature has been
+taken out until the cause is understood. The format itself is still written up
+in [`docs/FILE_FORMATS.md`](docs/FILE_FORMATS.md).
 
 ## How edits get back into the ROM
 
@@ -277,9 +244,9 @@ drops the alignment. Every container is checked against those invariants
 before a ROM is written, and the save is refused rather than producing a
 cartridge that will not boot.
 
-Photographs and announcer clips live in offset tables, and both kinds of blob
-declare their own length, so a replacement that fits its existing slot is
-dropped straight in and padded — every other entry stays exactly where it was.
+Photographs live in offset tables, and each blob declares its own length, so a
+replacement that fits its existing slot is dropped straight in and padded —
+every other entry stays exactly where it was.
 A recompressed block is likewise padded back out to the length it had before,
 so the blocks behind it keep their offsets. The upshot is that changing one
 player's portrait rewrites about 8 KB of a 12 MB cartridge instead of shunting
@@ -303,7 +270,7 @@ python3 tests/test_courtside.py                       # codec + model tests
 COURTSIDE_ROM=/path/to/rom.z64 python3 tests/test_courtside.py   # everything
 ```
 
-The ROM-backed tests check that all three packed files re-pack byte-identically,
+The ROM-backed tests check that the packed files re-pack byte-identically,
 that edits survive a save-and-reload, that a saved ROM's CRC validates, and
 that trades and releases leave the roster tables consistent.
 
@@ -322,11 +289,11 @@ open that file to see what happened. You can also run it from a terminal, where
 the output stays put.
 
 **"No module named tkinter"** — install the package for your distribution.
-Everything except the desktop window works without it, including the browser
-version and the whole command line.
+Everything except the desktop window works without it, including the whole
+command line.
 
 **The window will not open over SSH or on a headless box** — there is no
-display to draw on. Use the browser version (`serve`) or the command line.
+display to draw on. Use the command line instead.
 
 **An edited ROM will not load.** Run `python3 -m courtside your.z64 verify` on
 it. That re-reads the cartridge the way the console's boot scan does and prints

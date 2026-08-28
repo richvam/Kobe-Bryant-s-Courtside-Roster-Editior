@@ -12,7 +12,6 @@ license = { file = "LICENSE" }
 keywords = ["nintendo64", "n64", "rom", "roster editor", "nba courtside", "romhacking"]
 classifiers = [
   "Environment :: Console",
-  "Environment :: Web Environment",
   "Intended Audience :: End Users/Desktop",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
@@ -32,6 +31,3 @@ Homepage = "https://github.com/richvam/kobe-bryant-s-courtside-roster-editior"
 
 [tool.setuptools]
 packages = ["courtside"]
-
-[tool.setuptools.package-data]
-courtside = ["web/*"]

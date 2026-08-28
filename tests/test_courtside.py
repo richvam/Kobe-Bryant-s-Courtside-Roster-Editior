@@ -182,7 +182,7 @@ class TestLauncherFailures(unittest.TestCase):
 
     def test_missing_tkinter_help_names_the_packages(self):
         module = self.load()
-        for hint in ("python3-tk", "python3-tkinter", "python.org", "serve"):
+        for hint in ("python3-tk", "python3-tkinter", "python.org"):
             self.assertIn(hint, module.TK_HELP)
 
 
@@ -424,15 +424,18 @@ class TestFileSystemLayout(unittest.TestCase):
         changed = sum(1 for a, b in zip(before, after) if a != b)
         self.assertLess(changed, 0x4000, "a one-photo edit rewrote %d bytes" % changed)
 
-    def test_a_clip_that_fits_its_slot_keeps_the_file_the_same_size(self):
-        before = self.rom.read("TEAMTALK.IFF")
-        adb = self.editor.announcer
-        lengths = {p.player_id: sum(adb.clip_lengths(p.player_id))
-                   for p in self.editor.db.players if adb.has_call(p.player_id)}
-        longest = max(lengths, key=lengths.get)
-        shortest = min(lengths, key=lengths.get)
-        adb.copy_call(longest, shortest)
-        self.assertEqual(len(adb.to_file()), len(before))
+    def test_a_grown_file_still_leaves_every_other_file_readable(self):
+        # WAVE.DIR outgrows its slot, so the whole data area gets relaid out.
+        self.rom.write("WAVE.DIR", self.rom.read("WAVE.DIR") + b"\0" * 4096)
+        path = self.out()
+        self.editor.save(path)
+
+        again = RosterEditor.open(path)
+        for entry in again.rom.fs.entries:
+            self.assertEqual(len(again.rom.read(entry.name)), entry.size, entry.name)
+        self.assertEqual(again.db.problems(), [])
+        self.assertIsNotNone(again.appearance.photo(again.one("Kobe Bryant").player_id))
+        self.assertEqual(again.one("Kobe Bryant").jersey_text, "8")
 
 
 @needs_rom
@@ -487,12 +490,6 @@ class TestAlignment(unittest.TestCase):
             self.assertEqual(table.offsets[i] % 4, 0, "photo entry %d" % i)
             self.assertEqual(len(table.entry(i)) % 4, 0, "photo entry %d" % i)
 
-    def test_announcer_edit_keeps_entries_aligned(self):
-        self.editor.reassign_announcer("Sean Rooks", "Kobe Bryant")
-        table = self.editor.announcer.names
-        for i in range(table.count):
-            self.assertEqual(table.offsets[i] % 4, 0, "name clip %d" % i)
-
     def test_chunk_sizes_stay_multiples_of_four(self):
         # a name one byte longer used to shift every later chunk off alignment
         self.editor.one("Sean Rooks").last_name = "Jordanx"
@@ -519,80 +516,6 @@ class TestAlignment(unittest.TestCase):
         editor.db.to_file = lambda: bytes(broken)
         with self.assertRaises(EditorError):
             editor.save(os.path.join(self.tmp, "nope.z64"))
-
-
-@needs_rom
-class TestAnnouncer(unittest.TestCase):
-    def setUp(self):
-        self.editor = RosterEditor.open(ROM_PATH)
-        self.tmp = tempfile.mkdtemp()
-
-    def test_container_round_trips_byte_for_byte(self):
-        original = self.editor.rom.read("TEAMTALK.IFF")
-        self.assertEqual(self.editor.announcer.to_file(), original)
-
-    def test_every_player_has_a_pair_of_clips(self):
-        db = self.editor.announcer
-        self.assertEqual(db.names.count, 1 + 2 * self.editor.db.player_capacity)
-        for p in self.editor.db.real_players():
-            first, last = db.clip_indices(p.player_id)
-            self.assertEqual((first, last), (p.player_id * 2 - 1, p.player_id * 2))
-            self.assertTrue(db.has_call(p.player_id), p.full_name)
-
-    def test_copying_a_call_moves_both_clips(self):
-        db = self.editor.announcer
-        target = self.editor.one("Sean Rooks").player_id
-        source = self.editor.one("Kobe Bryant").player_id
-        before = [db.names.entry(i) for i in db.clip_indices(target)]
-        self.editor.reassign_announcer("Sean Rooks", "Kobe Bryant")
-        after = [db.names.entry(i) for i in db.clip_indices(target)]
-        wanted = [db.names.entry(i) for i in db.clip_indices(source)]
-        self.assertEqual(after, wanted)
-        self.assertNotEqual(after, before)
-
-    def test_copying_one_half_leaves_the_other(self):
-        db = self.editor.announcer
-        target = self.editor.one("Sean Rooks").player_id
-        first_before, _ = (db.names.entry(i) for i in db.clip_indices(target))
-        self.editor.reassign_announcer("Sean Rooks", "Kobe Bryant",
-                                       given_name=False, surname=True)
-        first_after, last_after = (db.names.entry(i) for i in db.clip_indices(target))
-        self.assertEqual(first_after, first_before)
-        source = self.editor.one("Kobe Bryant").player_id
-        self.assertEqual(last_after, db.names.entry(db.clip_indices(source)[1]))
-
-    def test_silence_empties_both_clips(self):
-        db = self.editor.announcer
-        p = self.editor.one("Sean Rooks")
-        self.editor.silence_announcer("Sean Rooks")
-        self.assertEqual(db.clip_lengths(p.player_id), (0, 0))
-        self.assertFalse(db.has_call(p.player_id))
-
-    def test_a_changed_call_survives_a_save(self):
-        self.editor.reassign_announcer("Sean Rooks", "Kobe Bryant")
-        path = os.path.join(self.tmp, "out.z64")
-        report = self.editor.save(path)
-        self.assertIsNotNone(report.teamtalk)
-
-        again = RosterEditor.open(path)
-        db = again.announcer
-        rooks = again.one("Sean Rooks").player_id
-        kobe = again.one("Kobe Bryant").player_id
-        self.assertEqual([db.names.entry(i) for i in db.clip_indices(rooks)],
-                         [db.names.entry(i) for i in db.clip_indices(kobe)])
-
-    def test_growing_a_file_leaves_every_other_file_readable(self):
-        # TEAMTALK outgrows its slot, so the whole data area gets relaid
-        self.editor.reassign_announcer("Sean Rooks", "Shareef Abdur-Rahim")
-        path = os.path.join(self.tmp, "out.z64")
-        self.editor.save(path)
-
-        again = RosterEditor.open(path)
-        for entry in again.rom.fs.entries:
-            self.assertEqual(len(again.rom.read(entry.name)), entry.size, entry.name)
-        self.assertEqual(again.db.problems(), [])
-        self.assertIsNotNone(again.appearance.photo(again.one("Kobe Bryant").player_id))
-        self.assertEqual(again.one("Kobe Bryant").jersey_text, "8")
 
 
 @needs_rom

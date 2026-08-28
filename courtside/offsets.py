@@ -1,6 +1,7 @@
 """The engine's ``count + offset table + payload`` chunk shape.
 
-``PTEX``, ``PIMG`` and ``PNAM`` all use it::
+``PTEX`` and ``PIMG`` both use it (so does ``PNAM``, which this editor only
+reads past)::
 
     u32       entry count
     u32[n+1]  offsets from the start of the chunk
@@ -17,10 +18,10 @@ and a misaligned one faults the CPU.  :meth:`OffsetTable.rebuild` keeps the
 invariant by padding each entry out to a four-byte boundary.
 
 Rebuilding is the expensive way to change one entry, because every entry
-behind it slides.  A photo blob's LZSS stream ends at its own end-of-stream
-token and an announcer clip declares its own length in its header, so a
-replacement that fits the slot it is going into can simply be dropped in and
-padded instead - which is what :meth:`OffsetTable.replace` tries first.
+behind it slides.  A photo or face blob's LZSS stream ends at its own
+end-of-stream token, so a replacement that fits the slot it is going into can
+simply be dropped in and padded instead - which is what
+:meth:`OffsetTable.replace` tries first.
 """
 
 from __future__ import annotations
@@ -81,9 +82,9 @@ class OffsetTable:
     def _replace_in_place(self, index: int, blob: bytes) -> bool:
         """Drop a blob into its existing slot without moving anything else.
 
-        Both kinds of blob stored this way carry their own length - a photo's
-        LZSS stream ends at its end-of-stream token, an announcer clip declares
-        its own size in its header - so filler past the end is never looked at.
+        The blobs stored this way carry their own length - a photo's LZSS
+        stream ends at its end-of-stream token - so filler past the end is
+        never looked at.
         Keeping the slot means every other entry stays byte for byte where it
         was, which is what stops a small edit from pushing the whole file
         downhill and forcing the packed files behind it to move.

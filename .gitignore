@@ -13,3 +13,11 @@ tests/courtside.z64
 
 # launcher crash reports
 courtside-error.log
+
+# editor and OS cruft
+.venv/
+venv/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
