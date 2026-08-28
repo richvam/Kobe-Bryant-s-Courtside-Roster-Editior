@@ -61,8 +61,6 @@ def save_and_report(ed: RosterEditor, out: str) -> int:
     print("  TEAMINFO.IFF %s" % report.teaminfo)
     if report.teamdata:
         print("  TEAMDATA.IFF %s" % report.teamdata)
-    if report.teamtalk:
-        print("  TEAMTALK.IFF %s" % report.teamtalk)
     print("  CRC fixed: 0x%08X 0x%08X" % report.crc)
     for w in report.warnings:
         print("  warning: %s" % w, file=sys.stderr)
@@ -203,26 +201,6 @@ def cmd_appearance(ed: RosterEditor, args) -> int:
     return save_and_report(ed, args.output)
 
 
-def cmd_announcer(ed: RosterEditor, args) -> int:
-    if args.silence:
-        p = ed.silence_announcer(args.target)
-        print("the announcer will no longer name %s" % p.full_name)
-    elif args.swap:
-        if not args.source:
-            raise EditorError("--swap needs a second player")
-        a, b = ed.swap_announcer(args.target, args.source)
-        print("%s and %s swapped announcer calls" % (a.full_name, b.full_name))
-    else:
-        if not args.source:
-            raise EditorError("name the player whose call should be borrowed, "
-                              "or pass --silence")
-        d, s = ed.reassign_announcer(
-            args.target, args.source,
-            given_name=not args.surname_only, surname=not args.given_name_only)
-        print("the announcer will call %s \"%s\"" % (d.full_name, s.full_name))
-    return save_and_report(ed, args.output)
-
-
 def cmd_export(ed: RosterEditor, args) -> int:
     ed.export_json(args.output)
     print("exported %d players and %d teams to %s"
@@ -267,12 +245,6 @@ def cmd_gui(ed: RosterEditor, args) -> int:
     return gui_main([ed.rom.path or ""])
 
 
-def cmd_serve(ed: RosterEditor, args) -> int:
-    from .webapp import serve
-    serve(ed, host=args.host, port=args.port, open_browser=not args.no_browser)
-    return 0
-
-
 def cmd_verify(ed: RosterEditor, args) -> int:
     """Re-pack every packed file and confirm it round-trips byte for byte."""
     ok = True
@@ -288,12 +260,6 @@ def cmd_verify(ed: RosterEditor, args) -> int:
         print("TEAMDATA.IFF does not round-trip", file=sys.stderr)
     else:
         print("TEAMDATA.IFF round-trips exactly (%d bytes)" % len(data))
-    talk = ed.rom.read("TEAMTALK.IFF")
-    if ed.announcer.to_file() != talk:
-        ok = False
-        print("TEAMTALK.IFF does not round-trip", file=sys.stderr)
-    else:
-        print("TEAMTALK.IFF round-trips exactly (%d bytes)" % len(talk))
     layout = ed.rom.verify()
     if layout:
         ok = False
@@ -394,20 +360,6 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--no-model", action="store_true", help="leave the model bytes alone")
     p.set_defaults(func=cmd_appearance)
 
-    p = with_output(sub.add_parser(
-        "announcer", help="change the name the PA announcer calls a player"))
-    p.add_argument("target", help="the player whose call changes")
-    p.add_argument("source", nargs="?",
-                   help="the player whose recorded name is borrowed")
-    p.add_argument("--swap", action="store_true", help="exchange two calls")
-    p.add_argument("--silence", action="store_true",
-                   help="leave the announcer with nothing to say for this player")
-    p.add_argument("--given-name-only", action="store_true",
-                   help="borrow only the first-name clip")
-    p.add_argument("--surname-only", action="store_true",
-                   help="borrow only the surname clip")
-    p.set_defaults(func=cmd_announcer)
-
     p = sub.add_parser("export", help="dump the roster to JSON")
     p.add_argument("-o", "--output", required=True)
     p.set_defaults(func=cmd_export)
@@ -438,12 +390,6 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("gui", help="open the offline desktop editor (Tkinter)")\
         .set_defaults(func=cmd_gui)
-
-    p = sub.add_parser("serve", help="open the editor as a local web page")
-    p.add_argument("--host", default="127.0.0.1")
-    p.add_argument("--port", type=int, default=8756)
-    p.add_argument("--no-browser", action="store_true")
-    p.set_defaults(func=cmd_serve)
 
     sub.add_parser("verify", help="check the codec round-trips this ROM exactly")\
         .set_defaults(func=cmd_verify)

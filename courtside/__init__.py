@@ -7,7 +7,7 @@ The package is layered so each piece is usable on its own:
 ``rom``         ROM byte order, CRC and the game's packed file table
 ``roster``      the roster database in ``TEAMINFO.IFF``
 ``appearance``  faces and roster photos in ``TEAMDATA.IFF``
-``editor``      the facade the CLI and web UI drive
+``editor``      the facade the CLI and desktop editor drive
 """
 
 from .editor import EditorError, RosterEditor, SaveReport  # noqa: F401

@@ -33,7 +33,7 @@ Everything except the window works without Tkinter - the command line editor
 covers the same features:
 
   python3 -m courtside YOUR-ROM.z64 info
-  python3 -m courtside YOUR-ROM.z64 serve      (the same editor, in a browser)"""
+  python3 -m courtside YOUR-ROM.z64 list --team Lakers"""
 
 
 def _log_path():
