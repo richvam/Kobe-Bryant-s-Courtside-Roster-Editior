@@ -10,8 +10,8 @@ recovered by disassembling the cartridge. The full write-up is in
 [`docs/FILE_FORMATS.md`](docs/FILE_FORMATS.md) — the container format, the
 LZSS codec, the 72-byte player record, the position packing, all of it.
 
-It runs entirely offline. No third-party packages, no internet, no accounts —
-Python 3.10 or newer and nothing else.
+
+Requires Python 3.10 or newer.
 
 ![The desktop editor](docs/gui-profile.png)
 
@@ -51,8 +51,6 @@ Python 3.10 or newer and nothing else.
 - Export everything to JSON, edit it however you like, import it back
 
 ## Install and run
-
-There is nothing to install beyond Python itself.
 
 ### Windows
 
@@ -96,6 +94,8 @@ sudo pacman -S tk                  # Arch
 ```
 
 If Tkinter is missing the launcher says so and names the package for you.
+
+Do note: It has not be human tested and verified on macOS or Linux; try at your own risk!! 
 
 ### Either way
 
@@ -228,6 +228,8 @@ two clips per player and the editor used to be able to hand one player another
 player's call, but a ROM saved that way would not boot, so the feature has been
 taken out until the cause is understood. The format itself is still written up
 in [`docs/FILE_FORMATS.md`](docs/FILE_FORMATS.md).
+
+This is a feature in active development and is still currently being investigated. 
 
 ## How edits get back into the ROM
 
